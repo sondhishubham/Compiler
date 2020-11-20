@@ -31,6 +31,7 @@ enum Symbol{
     ASSIGN,
     DECLARATION,
     FUNC_DECLARATOR,
+    CODE_SECTIONS,
     
     TYPE_VOID,
     TYPE_INT,

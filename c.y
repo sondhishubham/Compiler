@@ -42,9 +42,9 @@ void yyerror(const char *s);
 
 %token	ALIGNAS ALIGNOF ATOMIC GENERIC NORETURN STATIC_ASSERT THREAD_LOCAL
 
-%type <node_ptr> primary_expression constant postfix_expression unary_expression multiplicative_expression additive_expression shift_expression cast_expression relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression conditional_expression assignment_expression string expression expression_statement block_item block_item_list statement type_specifier declaration_specifiers compound_statement function_definition declarator direct_declarator parameter_type_list parameter_list parameter_declaration
+%type <node_ptr> primary_expression constant postfix_expression unary_expression multiplicative_expression additive_expression shift_expression cast_expression relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression conditional_expression assignment_expression string expression expression_statement block_item block_item_list statement type_specifier declaration_specifiers compound_statement function_definition declarator direct_declarator parameter_type_list parameter_list parameter_declaration external_declaration translation_unit
 
-%start translation_unit
+%start  start_unit
 %%
 
 primary_expression
@@ -213,14 +213,14 @@ expression
 //	| expression ',' assignment_expression
 	;
 
-constant_expression
-	: conditional_expression	/* with constraints */
-	;
+//constant_expression
+//	: conditional_expression	/* with constraints */
+//	;
 
-declaration
-	: declaration_specifiers ';'								
-	| declaration_specifiers init_declarator_list ';'			
-	| static_assert_declaration		
+//declaration
+//	: declaration_specifiers ';'								
+//	| declaration_specifiers init_declarator_list ';'			
+//	| static_assert_declaration		
 	;
 
 declaration_specifiers
@@ -236,15 +236,15 @@ declaration_specifiers
 //	| alignment_specifier
 	;
 
-init_declarator_list
-	: init_declarator
-	| init_declarator_list ',' init_declarator
-	;
+//init_declarator_list
+//	: init_declarator
+//	| init_declarator_list ',' init_declarator
+//	;
 
-init_declarator
-	: declarator '=' initializer
-	| declarator
-	;
+//init_declarator
+//	: declarator '=' initializer
+//	| declarator
+//	;
 
 //storage_class_specifier
 //	: TYPEDEF	/* identifiers must be flagged as TYPEDEF_NAME */
@@ -296,12 +296,12 @@ type_specifier
 //	| static_assert_declaration
 //	;
 
-specifier_qualifier_list
-	: type_specifier specifier_qualifier_list
-	| type_specifier
-	| type_qualifier specifier_qualifier_list
-	| type_qualifier
-	;
+//specifier_qualifier_list
+//	: type_specifier specifier_qualifier_list
+//	| type_specifier
+//	| type_qualifier specifier_qualifier_list
+//	| type_qualifier
+//	;
 
 //struct_declarator_list
 //	: struct_declarator
@@ -336,12 +336,12 @@ specifier_qualifier_list
 //	: ATOMIC '(' type_name ')'
 //	;
 
-type_qualifier
-	: CONST
-	| RESTRICT
-	| VOLATILE
-	| ATOMIC
-	;
+//type_qualifier
+//	: CONST
+//	| RESTRICT
+//	| VOLATILE
+//	| ATOMIC
+//	;
 
 //function_specifier
 //	: INLINE
@@ -444,36 +444,36 @@ parameter_declaration
 //	| direct_abstract_declarator '(' parameter_type_list ')'
 //	;
 
-initializer
-	: '{' initializer_list '}'
-	| '{' initializer_list ',' '}'
-	| assignment_expression
-	;
+//initializer
+//	: '{' initializer_list '}'
+//	| '{' initializer_list ',' '}'
+//	| assignment_expression
+//	;
 
-initializer_list
-	: designation initializer
-	| initializer
-	| initializer_list ',' designation initializer
-	| initializer_list ',' initializer
-	;
+//initializer_list
+//	: designation initializer
+//	| initializer
+//	| initializer_list ',' designation initializer
+//	| initializer_list ',' initializer
+//	;
 
-designation
-	: designator_list '='
-	;
+//designation
+//	: designator_list '='
+//	;
 
-designator_list
-	: designator
-	| designator_list designator
-	;
+//designator_list
+//	: designator
+//	| designator_list designator
+//	;
 
-designator
-	: '[' constant_expression ']'
-	| '.' IDENTIFIER
-	;
+//designator
+//	: '[' constant_expression ']'
+//	| '.' IDENTIFIER
+//	;
 
-static_assert_declaration
-	: STATIC_ASSERT '(' constant_expression ',' STRING_LITERAL ')' ';'
-	;
+//static_assert_declaration
+//	: STATIC_ASSERT '(' constant_expression ',' STRING_LITERAL ')' ';'
+//	;
 
 statement
 //	: labeled_statement
@@ -533,19 +533,22 @@ expression_statement
 //	| RETURN expression ';'
 //	;
 
+start_unit
+	:translation_unit															{printTree($1);}
+
 translation_unit
-	: external_declaration                                          
-	| translation_unit external_declaration
+	: external_declaration                                          			{$$ = $1;}
+	| translation_unit external_declaration										{$$ = $1;addChild($$,$2);}
 	;
 
 external_declaration
-	: function_definition
+	: function_definition														{$$ = createUnaryNode(CODE_SECTIONS,$1);}
 //	| declaration
 	;
 
 function_definition
 //	: declaration_specifiers declarator declaration_list compound_statement		//{$$ = createFunction($1,$2,$3,$4);}			
-	: declaration_specifiers declarator compound_statement						{$$ = createFunction($1,$2,$3); printTree($$); cout<<'\n';}						
+	: declaration_specifiers declarator compound_statement						{$$ = createFunction($1,$2,$3);}						
 	;
 
 //declaration_list
@@ -705,6 +708,8 @@ void printTree(NODE* p){
     		if(p->symbol == FUNC_DECLARATOR)cout<< "FUNC_DECLARATOR[";
     	case PARAMETERS:
     		if(p->symbol == PARAMETERS)cout<< "PARAMETERS[";
+    	case CODE_SECTIONS:
+    		if(p->symbol == CODE_SECTIONS)cout<< "CODE_SECTIONS[";
     		while(p->bp != p->children){
     			cout<<"|[";
     			printTree(p->bp++);

@@ -10,4 +10,3 @@ void simple_arith_with_arg(int d, char k) {
   4;
 }
 
-
