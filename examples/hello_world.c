@@ -1,6 +1,5 @@
-int
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
-  int m = 22 + 27;
+  cc = pp + 10;
   return 0;
 }

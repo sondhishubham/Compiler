@@ -24,6 +24,7 @@ WS  [ \t\v\n\f]
 %{
 #include <stdio.h>
 #include "ast.h"
+#include <string.h>
 #include "c.tab.hpp"
 
 extern void yyerror(const char *);  /* prints grammar violation message */
@@ -87,7 +88,7 @@ static int check_type(void);
 "_Thread_local"                         { return THREAD_LOCAL; }
 "__func__"                              { return FUNC_NAME; }
 
-{L}{A}*					{ return check_type(); }
+{L}{A}*					{ yylval.word = strdup(yytext);return check_type(); }
 
 {HP}{H}+{IS}?				{ yylval.number = atoi(yytext);return I_CONSTANT; }
 {NZ}{D}*{IS}?				{ yylval.number = atoi(yytext);return I_CONSTANT; }
@@ -101,7 +102,7 @@ static int check_type(void);
 {HP}{H}*"."{H}+{P}{FS}?			{ return F_CONSTANT; }
 {HP}{H}+"."{P}{FS}?			{ return F_CONSTANT; }
 
-({SP}?\"([^"\\\n]|{ES})*\"{WS}*)+	{ return STRING_LITERAL; }
+({SP}?\"([^"\\\n]|{ES})*\"{WS}*)+	{ yylval.word = strdup(yytext);return STRING_LITERAL; }
 
 "..."					{ return ELLIPSIS; }
 ">>="					{ return RIGHT_ASSIGN; }

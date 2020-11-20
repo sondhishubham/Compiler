@@ -18,9 +18,11 @@ void yyerror(const char *s);
 %union{
     int number;
     NODE* node_ptr;
+    char* word;
 }
 %token  <number> I_CONSTANT
-%token	IDENTIFIER F_CONSTANT STRING_LITERAL FUNC_NAME SIZEOF
+%token  <word> STRING_LITERAL IDENTIFIER
+%token	F_CONSTANT FUNC_NAME SIZEOF
 %token	PTR_OP INC_OP DEC_OP LEFT_OP RIGHT_OP LE_OP GE_OP EQ_OP NE_OP
 %token	AND_OP OR_OP MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN
 %token	SUB_ASSIGN LEFT_ASSIGN RIGHT_ASSIGN AND_ASSIGN
@@ -37,15 +39,15 @@ void yyerror(const char *s);
 
 %token	ALIGNAS ALIGNOF ATOMIC GENERIC NORETURN STATIC_ASSERT THREAD_LOCAL
 
-%type <node_ptr> primary_expression constant postfix_expression unary_expression multiplicative_expression additive_expression shift_expression cast_expression
+%type <node_ptr> primary_expression constant postfix_expression unary_expression multiplicative_expression additive_expression shift_expression cast_expression relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression conditional_expression assignment_expression string enumeration_constant
 
 %start translation_unit
 %%
 
 primary_expression
-//	: IDENTIFIER
-	: constant			{$$ = $1;}
-//	| string
+	: IDENTIFIER		{char* val = $1;$$= new NODE(IDENT,(void*)val,0);}
+	| constant			{$$ = $1;}
+	| string            {$$ = $1;}
 //	| '(' expression ')'
 //	| generic_selection
 	;
@@ -57,13 +59,13 @@ constant
 	;
 
 enumeration_constant		/* before it has been defined as such */
-	: IDENTIFIER
+	: IDENTIFIER		{char* val = $1;$$= new NODE(IDENT,(void*)val,0);}
 	;
 
-//string
-//	: STRING_LITERAL
+string
+	: STRING_LITERAL    {char* val = $1;$$= new NODE(STRING,(void*)val,0);}
 //	| FUNC_NAME
-//	;
+	;
 
 //generic_selection
 //	: GENERIC '(' assignment_expression ',' generic_assoc_list ')'
@@ -135,76 +137,76 @@ additive_expression
 	;
 
 shift_expression	
-	: additive_expression											{$$ = $1; printTree($$);}
+	: additive_expression											{$$ = $1;}
 //	| shift_expression LEFT_OP additive_expression
 //	| shift_expression RIGHT_OP additive_expression
 	;
 
 relational_expression
-	: shift_expression
-	| relational_expression '<' shift_expression
-	| relational_expression '>' shift_expression
-	| relational_expression LE_OP shift_expression
-	| relational_expression GE_OP shift_expression
+	: shift_expression                                              {$$ = $1;}
+//	| relational_expression '<' shift_expression
+//	| relational_expression '>' shift_expression
+//	| relational_expression LE_OP shift_expression
+//	| relational_expression GE_OP shift_expression
 	;
 
 equality_expression
-	: relational_expression
-	| equality_expression EQ_OP relational_expression
-	| equality_expression NE_OP relational_expression
+	: relational_expression                                         {$$ = $1;}
+//	| equality_expression EQ_OP relational_expression
+//	| equality_expression NE_OP relational_expression
 	;
 
 and_expression
-	: equality_expression
-	| and_expression '&' equality_expression
+	: equality_expression                                           {$$ = $1;}
+//	| and_expression '&' equality_expression
 	;
 
 exclusive_or_expression
-	: and_expression
-	| exclusive_or_expression '^' and_expression
+	: and_expression                                                {$$ = $1;}
+//	| exclusive_or_expression '^' and_expression
 	;
 
 inclusive_or_expression
-	: exclusive_or_expression
-	| inclusive_or_expression '|' exclusive_or_expression
+	: exclusive_or_expression                                       {$$ = $1;}
+//	| inclusive_or_expression '|' exclusive_or_expression
 	;
 
 logical_and_expression
-	: inclusive_or_expression
-	| logical_and_expression AND_OP inclusive_or_expression
+	: inclusive_or_expression                                       {$$ = $1;}
+//	| logical_and_expression AND_OP inclusive_or_expression
 	;
 
 logical_or_expression
-	: logical_and_expression
-	| logical_or_expression OR_OP logical_and_expression
+	: logical_and_expression                                        {$$ = $1;}
+//	| logical_or_expression OR_OP logical_and_expression
 	;
 
 conditional_expression
-	: logical_or_expression
-	| logical_or_expression '?' expression ':' conditional_expression
+	: logical_or_expression                                                     {$$ = $1;}
+//	| logical_or_expression '?' expression ':' conditional_expression
 	;
 
 assignment_expression
-	: conditional_expression
-	| unary_expression assignment_operator assignment_expression
+	: conditional_expression                                                    {$$ = $1;}
+	| unary_expression assignment_operator assignment_expression                {$$ = createBinaryNode(ASSIGN, $1, $3);}
 	;
 
 assignment_operator
 	: '='
-	| MUL_ASSIGN
-	| DIV_ASSIGN
-	| MOD_ASSIGN
-	| ADD_ASSIGN
-	| SUB_ASSIGN
-	| LEFT_ASSIGN
-	| RIGHT_ASSIGN
-	| AND_ASSIGN
-	| XOR_ASSIGN
-	| OR_ASSIGN
+//	| MUL_ASSIGN
+//	| DIV_ASSIGN
+//	| MOD_ASSIGN
+//	| ADD_ASSIGN
+//	| SUB_ASSIGN
+//	| LEFT_ASSIGN
+//	| RIGHT_ASSIGN
+//	| AND_ASSIGN
+//	| XOR_ASSIGN
+//	| OR_ASSIGN
 	;
 
 expression
-	: assignment_expression
+	: assignment_expression														{printTree($1);}
 	| expression ',' assignment_expression
 	;
 
@@ -529,7 +531,7 @@ jump_statement
 	;
 
 translation_unit
-	: external_declaration
+	: external_declaration                                          
 	| translation_unit external_declaration
 	;
 
@@ -566,14 +568,19 @@ NODE* createBinaryNode(SYMBOL sym, NODE* left, NODE* right){
 void printTree(NODE* p){
     switch(p->symbol){   
     	case INTEGER:
-    		cout << " [INTEGER("<<*((int*)p->value)<<")] ";	
+    		cout << "INTEGER("<<*((int*)p->value)<<")";	
+    		break;
+    	case IDENT:
+    		cout << "IDENT("<<(char*)p->value<<")";
     		break;
     	case PLUS:
-    		cout << "[PLUS [";
+    		cout << "[PLUS[";
+    	case ASSIGN:
+    		if(p->symbol == ASSIGN)cout << "[ASSIGN[";
     		printTree((p->bp++));
-    		cout << "] , [";
+    		cout << "],[";
     		printTree((p->bp));
-    		cout << "] ";
+    		cout << "]]";
     }
     return;
 }

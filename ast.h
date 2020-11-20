@@ -6,7 +6,10 @@ using namespace std;
 enum Symbol{
     PLUS,
     MULT,
-    INTEGER
+    INTEGER,
+    ASSIGN,
+    STRING,
+    IDENT
 };
 
 typedef enum Symbol SYMBOL;

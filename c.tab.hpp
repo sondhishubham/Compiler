@@ -50,9 +50,9 @@ extern int yydebug;
   enum yytokentype
   {
     I_CONSTANT = 258,
-    IDENTIFIER = 259,
-    F_CONSTANT = 260,
-    STRING_LITERAL = 261,
+    STRING_LITERAL = 259,
+    IDENTIFIER = 260,
+    F_CONSTANT = 261,
     FUNC_NAME = 262,
     SIZEOF = 263,
     PTR_OP = 264,
@@ -133,8 +133,9 @@ union YYSTYPE
 
     int number;
     NODE* node_ptr;
+    char* word;
 
-#line 138 "c.tab.hpp"
+#line 139 "c.tab.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;
