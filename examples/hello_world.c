@@ -1,6 +1,3 @@
-int main(int argc, char **argv)
-{
-  cc = 22 + 3;
-  je = d;
-  b = "shubham";
+void simple_arith() {
+  10 - 10/3 << 3 | (23);
 }

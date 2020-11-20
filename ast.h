@@ -4,12 +4,42 @@
 using namespace std;
 
 enum Symbol{
-    PLUS,
-    MULT,
-    INTEGER,
-    ASSIGN,
+
+	
     STRING,
     IDENT,
+    INTEGER,
+    
+    PLUS,
+    SUB,
+    DIVIDE,
+    REMAINDER,
+    LEFT_SHIFT,
+    RIGHT_SHIFT,
+    LESS_THAN_EQUAL_TO,
+    GREATER_THAN_EQUAL_TO,
+    LESS_THAN,
+    GREATER_THAN,
+    EQUAL_TO,
+    NOT_EQUAL_TO,
+    AND,
+    EXCLUSIVE_OR,
+    INCLUSIVE_OR,
+    LOGICAL_AND,
+    LOGICAL_OR,
+    MULT,
+    ASSIGN,
+    
+    
+    TYPE_VOID,
+    TYPE_INT,
+    TYPE_SHORT,
+    TYPE_LONG,
+    TYPE_DOUBLE,
+    TYPE_BOOL,
+    TYPE_CHAR,
+    TYPE_FLOAT,
+    
     BLOCK
 };
 

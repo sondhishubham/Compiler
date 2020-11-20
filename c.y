@@ -41,7 +41,7 @@ void yyerror(const char *s);
 
 %token	ALIGNAS ALIGNOF ATOMIC GENERIC NORETURN STATIC_ASSERT THREAD_LOCAL
 
-%type <node_ptr> primary_expression constant postfix_expression unary_expression multiplicative_expression additive_expression shift_expression cast_expression relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression conditional_expression assignment_expression string enumeration_constant expression expression_statement block_item block_item_list statement
+%type <node_ptr> primary_expression constant postfix_expression unary_expression multiplicative_expression additive_expression shift_expression cast_expression relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression conditional_expression assignment_expression string enumeration_constant expression expression_statement block_item block_item_list statement type_specifier declaration_specifiers
 
 %start translation_unit
 %%
@@ -50,7 +50,7 @@ primary_expression
 	: IDENTIFIER		{char* val = $1;$$= new NODE(IDENT,(void*)val,0);}
 	| constant			{$$ = $1;}
 	| string            {$$ = $1;}
-//	| '(' expression ')'
+	| '(' expression ')'{$$ = $2;}
 //	| generic_selection
 	;
 
@@ -127,60 +127,60 @@ cast_expression
 
 multiplicative_expression
 	: cast_expression												{$$ = $1;}
-//	| multiplicative_expression '*' cast_expression
-//	| multiplicative_expression '/' cast_expression
-//	| multiplicative_expression '%' cast_expression
+	| multiplicative_expression '*' cast_expression					{$$ = createBinaryNode(MULT, $1, $3);}
+	| multiplicative_expression '/' cast_expression					{$$ = createBinaryNode(DIVIDE, $1, $3);}
+	| multiplicative_expression '%' cast_expression					{$$ = createBinaryNode(REMAINDER, $1, $3);}
 	;
 
 additive_expression
 	: multiplicative_expression										{$$ = $1;}
 	| additive_expression '+' multiplicative_expression   			{$$ = createBinaryNode(PLUS, $1, $3);}
-//	| additive_expression '-' multiplicative_expression
+	| additive_expression '-' multiplicative_expression				{$$ = createBinaryNode(SUB, $1, $3);}
 	;
 
 shift_expression	
 	: additive_expression											{$$ = $1;}
-//	| shift_expression LEFT_OP additive_expression
-//	| shift_expression RIGHT_OP additive_expression
+	| shift_expression LEFT_OP additive_expression					{$$ = createBinaryNode(LEFT_SHIFT, $1, $3);}
+	| shift_expression RIGHT_OP additive_expression					{$$ = createBinaryNode(RIGHT_SHIFT, $1, $3);}
 	;
 
 relational_expression
 	: shift_expression                                              {$$ = $1;}
-//	| relational_expression '<' shift_expression
-//	| relational_expression '>' shift_expression
-//	| relational_expression LE_OP shift_expression
-//	| relational_expression GE_OP shift_expression
+	| relational_expression '<' shift_expression					{$$ = createBinaryNode(LESS_THAN, $1, $3);}		
+	| relational_expression '>' shift_expression					{$$ = createBinaryNode(GREATER_THAN, $1, $3);}				
+	| relational_expression LE_OP shift_expression					{$$ = createBinaryNode(LESS_THAN_EQUAL_TO, $1, $3);}
+	| relational_expression GE_OP shift_expression					{$$ = createBinaryNode(GREATER_THAN_EQUAL_TO, $1, $3);}
 	;
 
 equality_expression
 	: relational_expression                                         {$$ = $1;}
-//	| equality_expression EQ_OP relational_expression
-//	| equality_expression NE_OP relational_expression
+	| equality_expression EQ_OP relational_expression				{$$ = createBinaryNode(EQUAL_TO, $1, $3);}
+	| equality_expression NE_OP relational_expression				{$$ = createBinaryNode(NOT_EQUAL_TO, $1, $3);}
 	;
 
 and_expression
 	: equality_expression                                           {$$ = $1;}
-//	| and_expression '&' equality_expression
+	| and_expression '&' equality_expression						{$$ = createBinaryNode(AND, $1, $3);}
 	;
 
 exclusive_or_expression
 	: and_expression                                                {$$ = $1;}
-//	| exclusive_or_expression '^' and_expression
+	| exclusive_or_expression '^' and_expression					{$$ = createBinaryNode(EXCLUSIVE_OR, $1, $3);}
 	;
 
 inclusive_or_expression
 	: exclusive_or_expression                                       {$$ = $1;}
-//	| inclusive_or_expression '|' exclusive_or_expression
+	| inclusive_or_expression '|' exclusive_or_expression			{$$ = createBinaryNode(INCLUSIVE_OR, $1, $3);}
 	;
 
 logical_and_expression
 	: inclusive_or_expression                                       {$$ = $1;}
-//	| logical_and_expression AND_OP inclusive_or_expression
+	| logical_and_expression AND_OP inclusive_or_expression			{$$ = createBinaryNode(LOGICAL_AND, $1, $3);}
 	;
 
 logical_or_expression
 	: logical_and_expression                                        {$$ = $1;}
-//	| logical_or_expression OR_OP logical_and_expression
+	| logical_or_expression OR_OP logical_and_expression			{$$ = createBinaryNode(LOGICAL_OR, $1, $3);}
 	;
 
 conditional_expression
@@ -223,16 +223,16 @@ declaration
 	;
 
 declaration_specifiers
-	: storage_class_specifier declaration_specifiers
-	| storage_class_specifier
-	| type_specifier declaration_specifiers
-	| type_specifier
-	| type_qualifier declaration_specifiers
-	| type_qualifier
-	| function_specifier declaration_specifiers
-	| function_specifier
-	| alignment_specifier declaration_specifiers
-	| alignment_specifier
+//	: storage_class_specifier declaration_specifiers
+//	| storage_class_specifier
+//	| type_specifier declaration_specifiers
+	: type_specifier										{$$ = $1;}
+//	| type_qualifier declaration_specifiers
+//	| type_qualifier
+//	| function_specifier declaration_specifiers
+//	| function_specifier
+//	| alignment_specifier declaration_specifiers
+//	| alignment_specifier
 	;
 
 init_declarator_list
@@ -245,32 +245,32 @@ init_declarator
 	| declarator
 	;
 
-storage_class_specifier
-	: TYPEDEF	/* identifiers must be flagged as TYPEDEF_NAME */
-	| EXTERN
-	| STATIC
-	| THREAD_LOCAL
-	| AUTO
-	| REGISTER
-	;
+//storage_class_specifier
+//	: TYPEDEF	/* identifiers must be flagged as TYPEDEF_NAME */
+//	| EXTERN
+//	| STATIC
+//	| THREAD_LOCAL
+//	| AUTO
+//	| REGISTER
+//	;
 
 type_specifier
-	: VOID
-	| CHAR
-	| SHORT
-	| INT
-	| LONG
-	| FLOAT
-	| DOUBLE
-	| SIGNED
-	| UNSIGNED
-	| BOOL
-	| COMPLEX
-	| IMAGINARY	  	/* non-mandated extension */
-	| atomic_type_specifier
-	| struct_or_union_specifier
-	| enum_specifier
-	| TYPEDEF_NAME		/* after it has been defined as such */
+	: VOID													{$$ = new NODE(TYPE_VOID,NULL,0);}
+	| CHAR													{$$ = new NODE(TYPE_CHAR,NULL,0);}	
+	| SHORT													{$$ = new NODE(TYPE_SHORT,NULL,0);}
+	| INT													{$$ = new NODE(TYPE_INT,NULL,0);}
+	| LONG													{$$ = new NODE(TYPE_LONG,NULL,0);}
+	| FLOAT													{$$ = new NODE(TYPE_FLOAT,NULL,0);}
+	| DOUBLE												{$$ = new NODE(TYPE_DOUBLE,NULL,0);}
+//	| SIGNED												{$$ = new NODE(TYPE_VOID,NULL,0);}
+//	| UNSIGNED												{$$ = new NODE(TYPE_VOID,NULL,0);}
+	| BOOL													{$$ = new NODE(TYPE_BOOL,NULL,0);}
+//	| COMPLEX												
+//	| IMAGINARY	  	/* non-mandated extension */
+//	| atomic_type_specifier
+//	| struct_or_union_specifier
+//	| enum_specifier
+//	| TYPEDEF_NAME		/* after it has been defined as such */
 	;
 
 struct_or_union_specifier
@@ -342,15 +342,15 @@ type_qualifier
 	| ATOMIC
 	;
 
-function_specifier
-	: INLINE
-	| NORETURN
-	;
+//function_specifier
+//	: INLINE
+//	| NORETURN
+//	;
 
-alignment_specifier
-	: ALIGNAS '(' type_name ')'
-	| ALIGNAS '(' constant_expression ')'
-	;
+//alignment_specifier
+//	: ALIGNAS '(' type_name ')'
+//	| ALIGNAS '(' constant_expression ')'
+//	;
 
 declarator
 	: pointer direct_declarator
@@ -358,8 +358,8 @@ declarator
 	;
 
 direct_declarator
-	: IDENTIFIER
-	| '(' declarator ')'
+	: IDENTIFIER																			
+	| '(' declarator ')'																	
 	| direct_declarator '[' ']'
 	| direct_declarator '[' '*' ']'
 	| direct_declarator '[' STATIC type_qualifier_list assignment_expression ']'
@@ -539,7 +539,7 @@ translation_unit
 
 external_declaration
 	: function_definition
-	| declaration
+//	| declaration
 	;
 
 function_definition
@@ -621,6 +621,40 @@ void printTree(NODE* p){
     		cout << "[PLUS[";
     	case ASSIGN:
     		if(p->symbol == ASSIGN)cout << "[ASSIGN[";
+    	case SUB:
+    		if(p->symbol == SUB)cout << "[SUBTRACT[";
+    	case DIVIDE:
+    		if(p->symbol == DIVIDE)cout << "[DIVIDE[";
+    	case REMAINDER:
+    		if(p->symbol == REMAINDER)cout << "[REMAINDER[";
+    	case LEFT_SHIFT:
+    		if(p->symbol == LEFT_SHIFT)cout << "[LEFT_SHIFT[";
+    	case RIGHT_SHIFT:
+    		if(p->symbol == RIGHT_SHIFT)cout << "[RIGHT_SHIFT[";
+    	case LESS_THAN_EQUAL_TO:
+    		if(p->symbol == LESS_THAN_EQUAL_TO)cout << "[LESS_THAN_EQUAL_TO[";
+    	case GREATER_THAN_EQUAL_TO:
+    		if(p->symbol == GREATER_THAN_EQUAL_TO)cout << "[GREATER_THAN_EQUAL_TO[";
+	    case LESS_THAN:
+    		if(p->symbol == LESS_THAN)cout << "[LESS_THAN[";
+    	case GREATER_THAN:
+    		if(p->symbol == GREATER_THAN)cout << "[GREATER_THAN[";
+		case EQUAL_TO:
+    		if(p->symbol == EQUAL_TO)cout << "[EQUAL_TO[";
+	    case NOT_EQUAL_TO:
+    		if(p->symbol == NOT_EQUAL_TO)cout << "[NOT_EQUAL_TO[";
+    	case AND:
+    		if(p->symbol == AND)cout << "[AND[";
+    	case EXCLUSIVE_OR:
+    		if(p->symbol == EXCLUSIVE_OR)cout << "[EXCLUSIVE_OR[";
+    	case INCLUSIVE_OR:
+    		if(p->symbol == INCLUSIVE_OR)cout << "[INCLUSIVE_OR[";
+    	case LOGICAL_AND:
+    		if(p->symbol == LOGICAL_AND)cout << "[LOGICAL_AND[";
+    	case LOGICAL_OR:
+    		if(p->symbol == LOGICAL_OR)cout << "[LOGICAL_OR[";
+    	case MULT:
+    		if(p->symbol == MULT)cout << "[MULT[";
     		printTree(p->bp++);
     		cout << "],[";
     		printTree(p->bp++);
@@ -648,4 +682,5 @@ void yyerror(const char *s)
 	fflush(stdout);
 	fprintf(stderr, "*** %s\n", s);
 }
+
 
