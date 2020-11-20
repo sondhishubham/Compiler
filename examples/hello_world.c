@@ -1,5 +1,6 @@
 int main(int argc, char **argv)
 {
-  cc = pp + 10;
-  return 0;
+  cc = 22 + 3;
+  je = d;
+  b = "shubham";
 }

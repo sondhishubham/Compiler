@@ -5,8 +5,10 @@
 
 using namespace std;
 
-NODE* createBinaryNode(SYMBOL sym, NODE* left, NODE* right);
-void printTree(NODE* p);
+NODE* createUnaryNode(SYMBOL, NODE*);
+NODE* createBinaryNode(SYMBOL, NODE*, NODE*);
+void addChild(NODE*, NODE*);
+void printTree(NODE*);
 // stuff from flex that bison needs to know about:
 extern "C" int yylex();
 int yyparse();
@@ -39,7 +41,7 @@ void yyerror(const char *s);
 
 %token	ALIGNAS ALIGNOF ATOMIC GENERIC NORETURN STATIC_ASSERT THREAD_LOCAL
 
-%type <node_ptr> primary_expression constant postfix_expression unary_expression multiplicative_expression additive_expression shift_expression cast_expression relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression conditional_expression assignment_expression string enumeration_constant
+%type <node_ptr> primary_expression constant postfix_expression unary_expression multiplicative_expression additive_expression shift_expression cast_expression relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression conditional_expression assignment_expression string enumeration_constant expression expression_statement block_item block_item_list statement
 
 %start translation_unit
 %%
@@ -206,8 +208,8 @@ assignment_operator
 	;
 
 expression
-	: assignment_expression														{printTree($1);}
-	| expression ',' assignment_expression
+	: assignment_expression														{$$ = $1;}
+//	| expression ',' assignment_expression
 	;
 
 constant_expression
@@ -473,62 +475,62 @@ static_assert_declaration
 	;
 
 statement
-	: labeled_statement
-	| compound_statement
-	| expression_statement
-	| selection_statement
-	| iteration_statement
-	| jump_statement
+//	: labeled_statement
+//	| compound_statement
+	: expression_statement									{$$ = $1;}
+//	| selection_statement
+//	| iteration_statement
+//	| jump_statement
 	;
 
-labeled_statement
-	: IDENTIFIER ':' statement
-	| CASE constant_expression ':' statement
-	| DEFAULT ':' statement
-	;
+//labeled_statement
+//	: IDENTIFIER ':' statement
+//	| CASE constant_expression ':' statement
+//	| DEFAULT ':' statement
+//	;
 
 compound_statement
 	: '{' '}'
-	| '{'  block_item_list '}'
+	| '{'  block_item_list '}'  								{printTree($2);}
 	;
 
 block_item_list
-	: block_item
-	| block_item_list block_item
+	: block_item												{$$ = $1;}
+	| block_item_list block_item								{$$ = $1; addChild($$,$2);} //addChild($$, $2);}
 	;
 
 block_item
-	: declaration
-	| statement
+//	: declaration
+	: statement													{$$ = createUnaryNode(BLOCK, $1);}
 	;
 
 expression_statement
-	: ';'
-	| expression ';'
+//	: ';'
+	: expression ';'											{$$ = $1;}
 	;
 
-selection_statement
-	: IF '(' expression ')' statement ELSE statement
-	| IF '(' expression ')' statement
-	| SWITCH '(' expression ')' statement
-	;
+//selection_statement
+//	: IF '(' expression ')' statement ELSE statement
+//	| IF '(' expression ')' statement
+//	| SWITCH '(' expression ')' statement
+//	;
 
-iteration_statement
-	: WHILE '(' expression ')' statement
-	| DO statement WHILE '(' expression ')' ';'
-	| FOR '(' expression_statement expression_statement ')' statement
-	| FOR '(' expression_statement expression_statement expression ')' statement
-	| FOR '(' declaration expression_statement ')' statement
-	| FOR '(' declaration expression_statement expression ')' statement
-	;
+//iteration_statement
+//	: WHILE '(' expression ')' statement
+//	| DO statement WHILE '(' expression ')' ';'
+//	| FOR '(' expression_statement expression_statement ')' statement
+//	| FOR '(' expression_statement expression_statement expression ')' statement
+//	| FOR '(' declaration expression_statement ')' statement
+//	| FOR '(' declaration expression_statement expression ')' statement
+//	;
 
-jump_statement
-	: GOTO IDENTIFIER ';'
-	| CONTINUE ';'
-	| BREAK ';'
-	| RETURN ';'
-	| RETURN expression ';'
-	;
+//jump_statement
+//	: GOTO IDENTIFIER ';'
+//	| CONTINUE ';'
+//	| BREAK ';'
+//	| RETURN ';'
+//	| RETURN expression ';'
+//	;
 
 translation_unit
 	: external_declaration                                          
@@ -554,15 +556,52 @@ declaration_list
 #include <stdio.h>
 
 
+NODE* createUnaryNode(SYMBOL sym, NODE* child){
+	NODE* m = new NODE(sym, NULL, 1);
+	*(m->children++) = *child;
+	return m;
+}
+
 NODE* createBinaryNode(SYMBOL sym, NODE* left, NODE* right){
 	NODE* m = new NODE(sym, NULL, 2);
-//	cout<<"The base pointer is: "<< m->bp<<endl;
-//	cout<<"THe child pointer is "<< m->children<<endl;
 	*(m->children++) = *left;
 	*(m->children++) = *right;
-//	cout<<"The base pointer after assn is "<< m->bp<<endl;
-//	cout<<"The child pointer after assn is "<< m->children<<endl;
 	return m;
+}
+
+void addChild(NODE* parent, NODE* child){
+	int totalChildren = (parent->children - parent->bp);
+//	cout<<"The total number of children assigned are: "<<totalChildren<<endl;
+//	cout<<"The total number of children allowed are: "<<parent->numChildren<<endl;
+	if(totalChildren == parent->numChildren){
+		//increase the memory by 2
+//		cout<<"Initial bp is "<<parent->bp<<endl;
+//		cout<<"Initial children is "<<parent->children<<endl;
+		NODE* new_arr = (NODE*)malloc(2*(totalChildren+1)*sizeof(NODE)); // +1 to avoid infinite loop in totalChildren=0 case.
+//		cout << "Value of new_arr initially is: "<<new_arr<<endl;
+		parent->numChildren = 2*(totalChildren+1);
+		NODE* new_bp = new_arr;
+		NODE* itr = parent->bp;
+		while(itr!=parent->children){
+			*(new_arr++) = *(itr++);
+		}
+		free(parent->bp);
+		parent->children = new_arr;
+		parent->bp = new_bp;
+		*(parent->children++) = *(child->bp);
+//		printTree();
+		//increase the memory by 2
+//		cout<<"Final bp is "<<parent->bp<<endl;
+//		cout<<"Final children is "<<parent->children<<endl;
+//		cout<<"The difference is: "<<parent->children - parent->bp<<endl;
+	}
+	else if(totalChildren < parent->numChildren){
+		*(parent->children++) = *(child->bp);
+	}
+	else{
+		cout<<"The number of children assigned are greater than the number of children allowed!!!\n";
+	}
+	return;
 }
 
 void printTree(NODE* p){
@@ -573,14 +612,32 @@ void printTree(NODE* p){
     	case IDENT:
     		cout << "IDENT("<<(char*)p->value<<")";
     		break;
+    	case STRING:
+    		cout << "STRING("<<(char*)p->value<<")";
+    		break;
+    		
+    	//Write all the binary rules here
     	case PLUS:
     		cout << "[PLUS[";
     	case ASSIGN:
     		if(p->symbol == ASSIGN)cout << "[ASSIGN[";
-    		printTree((p->bp++));
+    		printTree(p->bp++);
     		cout << "],[";
-    		printTree((p->bp));
+    		printTree(p->bp++);
     		cout << "]]";
+    		break;
+    		
+    	case BLOCK:
+    		cout<< "BLOCK_LIST[";
+    		while(p->bp != p->children){
+    			cout<<"|[";
+    			printTree(p->bp++);
+    			cout<<"]";
+    		}
+    		cout<<"]";
+    		break;
+    	DEFAULT:
+    		cout<<"No prining rule for "<<p->symbol<<endl;
     }
     return;
 }

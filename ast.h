@@ -9,7 +9,8 @@ enum Symbol{
     INTEGER,
     ASSIGN,
     STRING,
-    IDENT
+    IDENT,
+    BLOCK
 };
 
 typedef enum Symbol SYMBOL;
@@ -22,6 +23,7 @@ class NODE{
             value = val;
             children = (NODE*)malloc(sizeof(NODE)*nChildren);
             bp = children;
+            numChildren = nChildren;
         }
         enum Symbol symbol;
         void* value;
