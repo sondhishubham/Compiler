@@ -5,6 +5,7 @@
 
 using namespace std;
 
+NODE* createFunction(NODE*,NODE*,NODE*);
 NODE* createUnaryNode(SYMBOL, NODE*);
 NODE* createBinaryNode(SYMBOL, NODE*, NODE*);
 void addChild(NODE*, NODE*);
@@ -41,7 +42,7 @@ void yyerror(const char *s);
 
 %token	ALIGNAS ALIGNOF ATOMIC GENERIC NORETURN STATIC_ASSERT THREAD_LOCAL
 
-%type <node_ptr> primary_expression constant postfix_expression unary_expression multiplicative_expression additive_expression shift_expression cast_expression relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression conditional_expression assignment_expression string enumeration_constant expression expression_statement block_item block_item_list statement type_specifier declaration_specifiers
+%type <node_ptr> primary_expression constant postfix_expression unary_expression multiplicative_expression additive_expression shift_expression cast_expression relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression conditional_expression assignment_expression string expression expression_statement block_item block_item_list statement type_specifier declaration_specifiers compound_statement function_definition declarator direct_declarator parameter_type_list parameter_list parameter_declaration
 
 %start translation_unit
 %%
@@ -60,9 +61,9 @@ constant
 //	| ENUMERATION_CONSTANT	/* after it has been defined as such */
 	;
 
-enumeration_constant		/* before it has been defined as such */
-	: IDENTIFIER		{char* val = $1;$$= new NODE(IDENT,(void*)val,0);}
-	;
+//enumeration_constant		/* before it has been defined as such */
+//	: IDENTIFIER		{char* val = $1;$$= new NODE(IDENT,(void*)val,0);}
+//	;
 
 string
 	: STRING_LITERAL    {char* val = $1;$$= new NODE(STRING,(void*)val,0);}
@@ -217,9 +218,9 @@ constant_expression
 	;
 
 declaration
-	: declaration_specifiers ';'
-	| declaration_specifiers init_declarator_list ';'
-	| static_assert_declaration
+	: declaration_specifiers ';'								
+	| declaration_specifiers init_declarator_list ';'			
+	| static_assert_declaration		
 	;
 
 declaration_specifiers
@@ -273,27 +274,27 @@ type_specifier
 //	| TYPEDEF_NAME		/* after it has been defined as such */
 	;
 
-struct_or_union_specifier
-	: struct_or_union '{' struct_declaration_list '}'
-	| struct_or_union IDENTIFIER '{' struct_declaration_list '}'
-	| struct_or_union IDENTIFIER
-	;
+//struct_or_union_specifier
+//	: struct_or_union '{' struct_declaration_list '}'
+//	| struct_or_union IDENTIFIER '{' struct_declaration_list '}'
+//	| struct_or_union IDENTIFIER
+//	;
 
-struct_or_union
-	: STRUCT
-	| UNION
-	;
+//struct_or_union
+//	: STRUCT
+//	| UNION
+//	;
 
-struct_declaration_list
-	: struct_declaration
-	| struct_declaration_list struct_declaration
-	;
+//struct_declaration_list
+//	: struct_declaration
+//	| struct_declaration_list struct_declaration
+//	;
 
-struct_declaration
-	: specifier_qualifier_list ';'	/* for anonymous struct/union */
-	| specifier_qualifier_list struct_declarator_list ';'
-	| static_assert_declaration
-	;
+//struct_declaration
+//	: specifier_qualifier_list ';'	/* for anonymous struct/union */
+//	| specifier_qualifier_list struct_declarator_list ';'
+//	| static_assert_declaration
+//	;
 
 specifier_qualifier_list
 	: type_specifier specifier_qualifier_list
@@ -302,38 +303,38 @@ specifier_qualifier_list
 	| type_qualifier
 	;
 
-struct_declarator_list
-	: struct_declarator
-	| struct_declarator_list ',' struct_declarator
-	;
+//struct_declarator_list
+//	: struct_declarator
+//	| struct_declarator_list ',' struct_declarator
+//	;
 
-struct_declarator
-	: ':' constant_expression
-	| declarator ':' constant_expression
-	| declarator
-	;
+//struct_declarator
+//	: ':' constant_expression
+//	| declarator ':' constant_expression
+//	| declarator
+//	;
 
-enum_specifier
-	: ENUM '{' enumerator_list '}'
-	| ENUM '{' enumerator_list ',' '}'
-	| ENUM IDENTIFIER '{' enumerator_list '}'
-	| ENUM IDENTIFIER '{' enumerator_list ',' '}'
-	| ENUM IDENTIFIER
-	;
+//enum_specifier
+//	: ENUM '{' enumerator_list '}'
+//	| ENUM '{' enumerator_list ',' '}'
+//	| ENUM IDENTIFIER '{' enumerator_list '}'
+//	| ENUM IDENTIFIER '{' enumerator_list ',' '}'
+//	| ENUM IDENTIFIER
+//	;
 
-enumerator_list
-	: enumerator
-	| enumerator_list ',' enumerator
-	;
+//enumerator_list
+//	: enumerator
+//	| enumerator_list ',' enumerator
+//	;
 
-enumerator	/* identifiers must be flagged as ENUMERATION_CONSTANT */
-	: enumeration_constant '=' constant_expression
-	| enumeration_constant
-	;
+//enumerator	/* identifiers must be flagged as ENUMERATION_CONSTANT */
+//	: enumeration_constant '=' constant_expression
+//	| enumeration_constant
+//	;
 
-atomic_type_specifier
-	: ATOMIC '(' type_name ')'
-	;
+//atomic_type_specifier
+//	: ATOMIC '(' type_name ')'
+//	;
 
 type_qualifier
 	: CONST
@@ -353,95 +354,95 @@ type_qualifier
 //	;
 
 declarator
-	: pointer direct_declarator
-	| direct_declarator
+//	: pointer direct_declarator			
+	: direct_declarator					{$$ = $1;}
 	;
 
 direct_declarator
-	: IDENTIFIER																			
-	| '(' declarator ')'																	
-	| direct_declarator '[' ']'
-	| direct_declarator '[' '*' ']'
-	| direct_declarator '[' STATIC type_qualifier_list assignment_expression ']'
-	| direct_declarator '[' STATIC assignment_expression ']'
-	| direct_declarator '[' type_qualifier_list '*' ']'
-	| direct_declarator '[' type_qualifier_list STATIC assignment_expression ']'
-	| direct_declarator '[' type_qualifier_list assignment_expression ']'
-	| direct_declarator '[' type_qualifier_list ']'
-	| direct_declarator '[' assignment_expression ']'
-	| direct_declarator '(' parameter_type_list ')'
-	| direct_declarator '(' ')'
-	| direct_declarator '(' identifier_list ')'
+	: IDENTIFIER															{char* val = $1;$$= new NODE(IDENT,(void*)val,0);}													
+	| '(' declarator ')'													{$$ = $2;}
+//	| direct_declarator '[' ']'			{$$ = $1;}
+//	| direct_declarator '[' '*' ']'
+//	| direct_declarator '[' STATIC type_qualifier_list assignment_expression ']'
+//	| direct_declarator '[' STATIC assignment_expression ']'
+//	| direct_declarator '[' type_qualifier_list '*' ']'
+//	| direct_declarator '[' type_qualifier_list STATIC assignment_expression ']'
+//	| direct_declarator '[' type_qualifier_list assignment_expression ']'
+//	| direct_declarator '[' type_qualifier_list ']'
+//	| direct_declarator '[' assignment_expression ']'
+	| direct_declarator '(' parameter_type_list ')'							{$$ = createBinaryNode(FUNC_DECLARATOR, $1, $3);}		
+	| direct_declarator '(' ')'												{$$ = createUnaryNode(FUNC_DECLARATOR,$1);}
+//	| direct_declarator '(' identifier_list ')'
 	;
 
-pointer
-	: '*' type_qualifier_list pointer
-	| '*' type_qualifier_list
-	| '*' pointer
-	| '*'
-	;
+//pointer
+//	: '*' type_qualifier_list pointer
+//	| '*' type_qualifier_list
+//	| '*' pointer
+//	| '*'
+//	;
 
-type_qualifier_list
-	: type_qualifier
-	| type_qualifier_list type_qualifier
-	;
+//type_qualifier_list
+//	: type_qualifier
+//	| type_qualifier_list type_qualifier
+//	;
 
 
 parameter_type_list
-	: parameter_list ',' ELLIPSIS
-	| parameter_list
+//	: parameter_list ',' ELLIPSIS
+	: parameter_list										{$$ = $1;}
 	;
 
 parameter_list
-	: parameter_declaration
-	| parameter_list ',' parameter_declaration
+	: parameter_declaration									{$$ = $1;}
+	| parameter_list ',' parameter_declaration				{$$=$1;addChild($$,$3);}
 	;
 
 parameter_declaration
-	: declaration_specifiers declarator
-	| declaration_specifiers abstract_declarator
-	| declaration_specifiers
+	: declaration_specifiers declarator						{NODE* m = createBinaryNode(DECLARATION, $1, $2); $$ = createUnaryNode(PARAMETERS,m);}
+//	| declaration_specifiers abstract_declarator
+	| declaration_specifiers								{$$ = createUnaryNode(PARAMETERS, $1);}
 	;
 
-identifier_list
-	: IDENTIFIER
-	| identifier_list ',' IDENTIFIER
-	;
+//identifier_list
+//	: IDENTIFIER
+//	| identifier_list ',' IDENTIFIER
+//	;
 
-type_name
-	: specifier_qualifier_list abstract_declarator
-	| specifier_qualifier_list
-	;
+//type_name
+//	: specifier_qualifier_list abstract_declarator
+//	| specifier_qualifier_list
+//	;
 
-abstract_declarator
-	: pointer direct_abstract_declarator
-	| pointer
-	| direct_abstract_declarator
-	;
+//abstract_declarator
+//	: pointer direct_abstract_declarator
+//	| pointer
+//	| direct_abstract_declarator
+//	;
 
-direct_abstract_declarator
-	: '(' abstract_declarator ')'
-	| '[' ']'
-	| '[' '*' ']'
-	| '[' STATIC type_qualifier_list assignment_expression ']'
-	| '[' STATIC assignment_expression ']'
-	| '[' type_qualifier_list STATIC assignment_expression ']'
-	| '[' type_qualifier_list assignment_expression ']'
-	| '[' type_qualifier_list ']'
-	| '[' assignment_expression ']'
-	| direct_abstract_declarator '[' ']'
-	| direct_abstract_declarator '[' '*' ']'
-	| direct_abstract_declarator '[' STATIC type_qualifier_list assignment_expression ']'
-	| direct_abstract_declarator '[' STATIC assignment_expression ']'
-	| direct_abstract_declarator '[' type_qualifier_list assignment_expression ']'
-	| direct_abstract_declarator '[' type_qualifier_list STATIC assignment_expression ']'
-	| direct_abstract_declarator '[' type_qualifier_list ']'
-	| direct_abstract_declarator '[' assignment_expression ']'
-	| '(' ')'
-	| '(' parameter_type_list ')'
-	| direct_abstract_declarator '(' ')'
-	| direct_abstract_declarator '(' parameter_type_list ')'
-	;
+//direct_abstract_declarator
+//	: '(' abstract_declarator ')'
+//	| '[' ']'
+//	| '[' '*' ']'
+//	| '[' STATIC type_qualifier_list assignment_expression ']'
+//	| '[' STATIC assignment_expression ']'
+//	| '[' type_qualifier_list STATIC assignment_expression ']'
+//	| '[' type_qualifier_list assignment_expression ']'
+//	| '[' type_qualifier_list ']'
+//	| '[' assignment_expression ']'
+//	| direct_abstract_declarator '[' ']'
+//	| direct_abstract_declarator '[' '*' ']'
+//	| direct_abstract_declarator '[' STATIC type_qualifier_list assignment_expression ']'
+//	| direct_abstract_declarator '[' STATIC assignment_expression ']'
+//	| direct_abstract_declarator '[' type_qualifier_list assignment_expression ']'
+//	| direct_abstract_declarator '[' type_qualifier_list STATIC assignment_expression ']'
+//	| direct_abstract_declarator '[' type_qualifier_list ']'
+//	| direct_abstract_declarator '[' assignment_expression ']'
+//	| '(' ')'
+//	| '(' parameter_type_list ')'
+//	| direct_abstract_declarator '(' ')'
+//	| direct_abstract_declarator '(' parameter_type_list ')'
+//	;
 
 initializer
 	: '{' initializer_list '}'
@@ -490,8 +491,8 @@ statement
 //	;
 
 compound_statement
-	: '{' '}'
-	| '{'  block_item_list '}'  								{printTree($2);}
+	: '{' '}'													{$$ = new NODE(BLOCK, NULL, 0);}
+	| '{'  block_item_list '}'  								{$$ = $2;}
 	;
 
 block_item_list
@@ -543,18 +544,26 @@ external_declaration
 	;
 
 function_definition
-	: declaration_specifiers declarator declaration_list compound_statement
-	| declaration_specifiers declarator compound_statement
+//	: declaration_specifiers declarator declaration_list compound_statement		//{$$ = createFunction($1,$2,$3,$4);}			
+	: declaration_specifiers declarator compound_statement						{$$ = createFunction($1,$2,$3); printTree($$); cout<<'\n';}						
 	;
 
-declaration_list
-	: declaration
-	| declaration_list declaration
-	;
+//declaration_list
+//	: declaration										
+//	| declaration_list declaration							
+//	;
 
 %%
 #include <stdio.h>
 
+
+NODE* createFunction(NODE* specifier, NODE* func_dec, NODE* function_body){
+	NODE* m = new NODE(FUNC_DEF, NULL, 4);
+	*(m->children++) = *specifier;
+	*(m->children++) = *func_dec;
+	*(m->children++) = *function_body;
+	return m;
+}
 
 NODE* createUnaryNode(SYMBOL sym, NODE* child){
 	NODE* m = new NODE(sym, NULL, 1);
@@ -614,7 +623,32 @@ void printTree(NODE* p){
     		break;
     	case STRING:
     		cout << "STRING("<<(char*)p->value<<")";
+    		break;    		    
+    	case TYPE_VOID:
+    		cout << "TYPE_VOID";
     		break;
+    	case TYPE_INT:
+    		cout << "TYPE_INT";
+    		break;
+    	case TYPE_SHORT:
+    		cout << "TYPE_SHORT";
+    		break;
+    	case TYPE_LONG:
+    		cout << "TYPE_LONG";
+    		break;
+    	case TYPE_DOUBLE:
+    		cout << "TYPE_DOUBLE";
+    		break;
+    	case TYPE_BOOL:
+    		cout << "TYPE_BOOL";
+    		break;
+    	case TYPE_CHAR:
+    		cout << "TYPE_CHAR";
+    		break;
+    	case TYPE_FLOAT:
+    		cout << "TYPE_FLOAT";
+    		break;
+    
     		
     	//Write all the binary rules here
     	case PLUS:
@@ -655,6 +689,8 @@ void printTree(NODE* p){
     		if(p->symbol == LOGICAL_OR)cout << "[LOGICAL_OR[";
     	case MULT:
     		if(p->symbol == MULT)cout << "[MULT[";
+    	case DECLARATION:
+    		if(p->symbol == DECLARATION)cout << "[DECLARATION[";
     		printTree(p->bp++);
     		cout << "],[";
     		printTree(p->bp++);
@@ -663,6 +699,12 @@ void printTree(NODE* p){
     		
     	case BLOCK:
     		cout<< "BLOCK_LIST[";
+    	case FUNC_DEF:
+    		if(p->symbol == FUNC_DEF)cout<< "FUNC_DEF[";
+    	case FUNC_DECLARATOR:
+    		if(p->symbol == FUNC_DECLARATOR)cout<< "FUNC_DECLARATOR[";
+    	case PARAMETERS:
+    		if(p->symbol == PARAMETERS)cout<< "PARAMETERS[";
     		while(p->bp != p->children){
     			cout<<"|[";
     			printTree(p->bp++);

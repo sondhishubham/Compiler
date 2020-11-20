@@ -29,7 +29,8 @@ enum Symbol{
     LOGICAL_OR,
     MULT,
     ASSIGN,
-    
+    DECLARATION,
+    FUNC_DECLARATOR,
     
     TYPE_VOID,
     TYPE_INT,
@@ -40,7 +41,9 @@ enum Symbol{
     TYPE_CHAR,
     TYPE_FLOAT,
     
-    BLOCK
+    BLOCK,
+    PARAMETERS,
+    FUNC_DEF
 };
 
 typedef enum Symbol SYMBOL;

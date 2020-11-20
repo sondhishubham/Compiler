@@ -1,3 +1,13 @@
+void empty() { }
+
+
 void simple_arith() {
-  10 - 10/3 << 3 | (23);
+  a =10;
+  b >> k;
 }
+
+void simple_arith_with_arg(int d, char k) {
+  4;
+}
+
+
