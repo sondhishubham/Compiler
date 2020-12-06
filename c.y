@@ -42,7 +42,7 @@ void yyerror(const char *s);
 
 %token	ALIGNAS ALIGNOF ATOMIC GENERIC NORETURN STATIC_ASSERT THREAD_LOCAL
 
-%type <node_ptr> primary_expression constant postfix_expression unary_expression multiplicative_expression additive_expression shift_expression cast_expression relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression conditional_expression assignment_expression string expression expression_statement block_item block_item_list statement type_specifier declaration_specifiers compound_statement function_definition declarator direct_declarator parameter_type_list parameter_list parameter_declaration external_declaration translation_unit
+%type <node_ptr> primary_expression constant postfix_expression unary_expression multiplicative_expression additive_expression shift_expression cast_expression relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression conditional_expression assignment_expression string expression expression_statement block_item block_item_list statement type_specifier declaration_specifiers compound_statement function_definition declarator direct_declarator parameter_type_list parameter_list parameter_declaration external_declaration translation_unit declaration init_declarator init_declarator_list
 
 %start  start_unit
 %%
@@ -191,21 +191,17 @@ conditional_expression
 
 assignment_expression
 	: conditional_expression                                                    {$$ = $1;}
-	| unary_expression assignment_operator assignment_expression                {$$ = createBinaryNode(ASSIGN, $1, $3);}
-	;
-
-assignment_operator
-	: '='
-//	| MUL_ASSIGN
-//	| DIV_ASSIGN
-//	| MOD_ASSIGN
-//	| ADD_ASSIGN
-//	| SUB_ASSIGN
-//	| LEFT_ASSIGN
-//	| RIGHT_ASSIGN
-//	| AND_ASSIGN
-//	| XOR_ASSIGN
-//	| OR_ASSIGN
+	| unary_expression '=' assignment_expression                				{$$ = createBinaryNode(ASSIGN, $1, $3);}
+	| unary_expression MUL_ASSIGN assignment_expression							{$$ = createBinaryNode(MUL_ASSIGNN, $1, $3);}
+	| unary_expression DIV_ASSIGN assignment_expression							{$$ = createBinaryNode(DIV_ASSIGNN, $1, $3);}
+	| unary_expression MOD_ASSIGN assignment_expression							{$$ = createBinaryNode(MOD_ASSIGNN, $1, $3);}
+	| unary_expression ADD_ASSIGN assignment_expression							{$$ = createBinaryNode(ADD_ASSIGNN, $1, $3);}
+	| unary_expression SUB_ASSIGN assignment_expression							{$$ = createBinaryNode(SUB_ASSIGNN, $1, $3);}
+	| unary_expression LEFT_ASSIGN assignment_expression						{$$ = createBinaryNode(LEFT_ASSIGNN, $1, $3);}
+	| unary_expression RIGHT_ASSIGN assignment_expression						{$$ = createBinaryNode(RIGHT_ASSIGNN, $1, $3);}		
+	| unary_expression AND_ASSIGN assignment_expression							{$$ = createBinaryNode(AND_ASSIGNN, $1, $3);}	
+	| unary_expression XOR_ASSIGN assignment_expression							{$$ = createBinaryNode(XOR_ASSIGNN, $1, $3);}	
+	| unary_expression OR_ASSIGN assignment_expression							{$$ = createBinaryNode(OR_ASSIGNN, $1, $3);}	
 	;
 
 expression
@@ -217,9 +213,9 @@ expression
 //	: conditional_expression	/* with constraints */
 //	;
 
-//declaration
+declaration
 //	: declaration_specifiers ';'								
-//	| declaration_specifiers init_declarator_list ';'			
+	: declaration_specifiers init_declarator_list ';'		{$$ = createBinaryNode(DECLARATION,$1,$2);}  //DECLARATION_LIST in int m,k,l; is [m,k,l]	
 //	| static_assert_declaration		
 	;
 
@@ -236,15 +232,15 @@ declaration_specifiers
 //	| alignment_specifier
 	;
 
-//init_declarator_list
-//	: init_declarator
-//	| init_declarator_list ',' init_declarator
-//	;
+init_declarator_list
+	: init_declarator										{$$=$1;}
+	| init_declarator_list ',' init_declarator				{$$ = $1; addChild($$, $3);}
+	;
 
-//init_declarator
+init_declarator
 //	: declarator '=' initializer
-//	| declarator
-//	;
+	: declarator											{$$ = createUnaryNode(DECLARATION_LIST, $1);}
+	;
 
 //storage_class_specifier
 //	: TYPEDEF	/* identifiers must be flagged as TYPEDEF_NAME */
@@ -361,7 +357,7 @@ declarator
 direct_declarator
 	: IDENTIFIER															{char* val = $1;$$= new NODE(IDENT,(void*)val,0);}													
 	| '(' declarator ')'													{$$ = $2;}
-//	| direct_declarator '[' ']'			{$$ = $1;}
+//	| direct_declarator '[' ']'			
 //	| direct_declarator '[' '*' ']'
 //	| direct_declarator '[' STATIC type_qualifier_list assignment_expression ']'
 //	| direct_declarator '[' STATIC assignment_expression ']'
@@ -501,12 +497,12 @@ block_item_list
 	;
 
 block_item
-//	: declaration
-	: statement													{$$ = createUnaryNode(BLOCK, $1);}
+	: declaration												{$$ = createUnaryNode(BLOCK,$1);}
+	| statement													{$$ = createUnaryNode(BLOCK,$1);}
 	;
 
 expression_statement
-//	: ';'
+//	: ';'														{$$ = NULL;}
 	: expression ';'											{$$ = $1;}
 	;
 
@@ -534,7 +530,7 @@ expression_statement
 //	;
 
 start_unit
-	:translation_unit															{printTree($1);}
+	:translation_unit															{printTree($1);cout<<'\n';}
 
 translation_unit
 	: external_declaration                                          			{$$ = $1;}
@@ -583,14 +579,8 @@ NODE* createBinaryNode(SYMBOL sym, NODE* left, NODE* right){
 
 void addChild(NODE* parent, NODE* child){
 	int totalChildren = (parent->children - parent->bp);
-//	cout<<"The total number of children assigned are: "<<totalChildren<<endl;
-//	cout<<"The total number of children allowed are: "<<parent->numChildren<<endl;
 	if(totalChildren == parent->numChildren){
-		//increase the memory by 2
-//		cout<<"Initial bp is "<<parent->bp<<endl;
-//		cout<<"Initial children is "<<parent->children<<endl;
 		NODE* new_arr = (NODE*)malloc(2*(totalChildren+1)*sizeof(NODE)); // +1 to avoid infinite loop in totalChildren=0 case.
-//		cout << "Value of new_arr initially is: "<<new_arr<<endl;
 		parent->numChildren = 2*(totalChildren+1);
 		NODE* new_bp = new_arr;
 		NODE* itr = parent->bp;
@@ -601,11 +591,6 @@ void addChild(NODE* parent, NODE* child){
 		parent->children = new_arr;
 		parent->bp = new_bp;
 		*(parent->children++) = *(child->bp);
-//		printTree();
-		//increase the memory by 2
-//		cout<<"Final bp is "<<parent->bp<<endl;
-//		cout<<"Final children is "<<parent->children<<endl;
-//		cout<<"The difference is: "<<parent->children - parent->bp<<endl;
 	}
 	else if(totalChildren < parent->numChildren){
 		*(parent->children++) = *(child->bp);
@@ -658,6 +643,26 @@ void printTree(NODE* p){
     		cout << "[PLUS[";
     	case ASSIGN:
     		if(p->symbol == ASSIGN)cout << "[ASSIGN[";
+    	case MUL_ASSIGNN:
+    		if(p->symbol == MUL_ASSIGNN)cout << "[MUL_ASSIGN[";
+    	case DIV_ASSIGNN:
+    		if(p->symbol == DIV_ASSIGNN)cout << "[DIV_ASSIGN[";
+    	case MOD_ASSIGNN:
+    		if(p->symbol == MOD_ASSIGNN)cout << "[MOD_ASSIGN[";
+    	case ADD_ASSIGNN:
+    		if(p->symbol == ADD_ASSIGNN)cout << "[ADD_ASSIGN[";
+    	case SUB_ASSIGNN:
+    		if(p->symbol == SUB_ASSIGNN)cout << "[SUB_ASSIGN[";
+    	case LEFT_ASSIGNN:
+    		if(p->symbol == LEFT_ASSIGNN)cout << "[LEFT_ASSIGN[";
+    	case RIGHT_ASSIGNN:
+    		if(p->symbol == RIGHT_ASSIGNN)cout << "[RIGHT_ASSIGN[";
+    	case AND_ASSIGNN:
+    		if(p->symbol == AND_ASSIGNN)cout << "[AND_ASSIGN[";
+    	case XOR_ASSIGNN:
+    		if(p->symbol == XOR_ASSIGNN)cout << "[XOR_ASSIGN[";
+    	case OR_ASSIGNN:
+    		if(p->symbol == OR_ASSIGNN)cout << "[OR_ASSIGN[";
     	case SUB:
     		if(p->symbol == SUB)cout << "[SUBTRACT[";
     	case DIVIDE:
@@ -702,6 +707,8 @@ void printTree(NODE* p){
     		
     	case BLOCK:
     		cout<< "BLOCK_LIST[";
+    	case DECLARATION_LIST:
+    		if(p->symbol == DECLARATION_LIST)cout<< "DECLARATION_LIST[";
     	case FUNC_DEF:
     		if(p->symbol == FUNC_DEF)cout<< "FUNC_DEF[";
     	case FUNC_DECLARATOR:

@@ -29,7 +29,17 @@ enum Symbol{
     LOGICAL_OR,
     MULT,
     ASSIGN,
-    DECLARATION,
+	MUL_ASSIGNN,
+	DIV_ASSIGNN,
+	MOD_ASSIGNN,
+	ADD_ASSIGNN,
+	SUB_ASSIGNN,
+	LEFT_ASSIGNN,
+	RIGHT_ASSIGNN,
+	AND_ASSIGNN,
+	XOR_ASSIGNN,
+	OR_ASSIGNN,
+    DECLARATION,		// int m, DECLARATION is a binary op with first val = int and second val = m
     FUNC_DECLARATOR,
     CODE_SECTIONS,
     
@@ -42,6 +52,7 @@ enum Symbol{
     TYPE_CHAR,
     TYPE_FLOAT,
     
+    DECLARATION_LIST,  // int m,j,k,n (m,j,k,n is the list)
     BLOCK,
     PARAMETERS,
     FUNC_DEF

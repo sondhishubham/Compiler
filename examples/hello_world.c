@@ -1,12 +1,7 @@
-void empty() { }
+int printf(char const *format, ...);
 
-
-void simple_arith() {
-  a =10;
-  b >> k;
-}
-
-void simple_arith_with_arg(int d, char k) {
-  4;
-}
-
+int
+main(int argc, char **argv)
+{
+  printf("hello, world\n");
+  return 0;
