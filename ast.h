@@ -43,6 +43,10 @@ enum Symbol{
     FUNC_DECLARATOR,
     CODE_SECTIONS,
     
+    POINTER,
+    CONSTT,
+    ELLIPSISS,
+    
     TYPE_VOID,
     TYPE_INT,
     TYPE_SHORT,
@@ -52,6 +56,7 @@ enum Symbol{
     TYPE_CHAR,
     TYPE_FLOAT,
     
+    INITIALIZE,			// int m = 3, (m,3) is the binary op initialize
     DECLARATION_LIST,  // int m,j,k,n (m,j,k,n is the list)
     BLOCK,
     PARAMETERS,

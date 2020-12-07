@@ -42,7 +42,7 @@ void yyerror(const char *s);
 
 %token	ALIGNAS ALIGNOF ATOMIC GENERIC NORETURN STATIC_ASSERT THREAD_LOCAL
 
-%type <node_ptr> primary_expression constant postfix_expression unary_expression multiplicative_expression additive_expression shift_expression cast_expression relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression conditional_expression assignment_expression string expression expression_statement block_item block_item_list statement type_specifier declaration_specifiers compound_statement function_definition declarator direct_declarator parameter_type_list parameter_list parameter_declaration external_declaration translation_unit declaration init_declarator init_declarator_list
+%type <node_ptr> primary_expression constant postfix_expression unary_expression multiplicative_expression additive_expression shift_expression cast_expression relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression conditional_expression assignment_expression string expression expression_statement block_item block_item_list statement type_specifier declaration_specifiers compound_statement function_definition declarator direct_declarator parameter_type_list parameter_list parameter_declaration external_declaration translation_unit declaration init_declarator init_declarator_list initializer
 
 %start  start_unit
 %%
@@ -224,7 +224,9 @@ declaration_specifiers
 //	| storage_class_specifier
 //	| type_specifier declaration_specifiers
 	: type_specifier										{$$ = $1;}
-//	| type_qualifier declaration_specifiers
+	| CONST type_specifier									{$$ = createUnaryNode(CONSTT, $2);}
+	| type_specifier CONST									{$$ = createUnaryNode(CONSTT, $1);}
+//	| type_qualifier declaration_specifiers					
 //	| type_qualifier
 //	| function_specifier declaration_specifiers
 //	| function_specifier
@@ -233,13 +235,13 @@ declaration_specifiers
 	;
 
 init_declarator_list
-	: init_declarator										{$$=$1;}
+	: init_declarator										{$$ = $1;}
 	| init_declarator_list ',' init_declarator				{$$ = $1; addChild($$, $3);}
 	;
 
 init_declarator
-//	: declarator '=' initializer
-	: declarator											{$$ = createUnaryNode(DECLARATION_LIST, $1);}
+	: declarator '=' initializer							{NODE* m = createBinaryNode(INITIALIZE, $1, $3); $$ = createUnaryNode(DECLARATION_LIST,m);}
+	| declarator											{$$ = createUnaryNode(DECLARATION_LIST, $1);}
 	;
 
 //storage_class_specifier
@@ -350,8 +352,8 @@ type_specifier
 //	;
 
 declarator
-//	: pointer direct_declarator			
-	: direct_declarator					{$$ = $1;}
+	: '*' declarator					{$$ = createUnaryNode(POINTER,$2);}
+	| direct_declarator					{$$ = $1;}
 	;
 
 direct_declarator
@@ -374,7 +376,7 @@ direct_declarator
 //pointer
 //	: '*' type_qualifier_list pointer
 //	| '*' type_qualifier_list
-//	| '*' pointer
+//	: '*' pointer
 //	| '*'
 //	;
 
@@ -385,8 +387,9 @@ direct_declarator
 
 
 parameter_type_list
-//	: parameter_list ',' ELLIPSIS
-	: parameter_list										{$$ = $1;}
+	: parameter_list ',' ELLIPSIS							{NODE*m = new NODE(ELLIPSISS,NULL,0); NODE*k = createUnaryNode(PARAMETERS,m);$$ = $1; addChild($$,k);}
+
+	| parameter_list										{$$ = $1;}
 	;
 
 parameter_list
@@ -440,11 +443,11 @@ parameter_declaration
 //	| direct_abstract_declarator '(' parameter_type_list ')'
 //	;
 
-//initializer
+initializer
 //	: '{' initializer_list '}'
 //	| '{' initializer_list ',' '}'
-//	| assignment_expression
-//	;
+	: logical_or_expression										{$$ = $1;}
+	;
 
 //initializer_list
 //	: designation initializer
@@ -539,7 +542,7 @@ translation_unit
 
 external_declaration
 	: function_definition														{$$ = createUnaryNode(CODE_SECTIONS,$1);}
-//	| declaration
+	| declaration																{$$ = createUnaryNode(CODE_SECTIONS,$1);}
 	;
 
 function_definition
@@ -636,6 +639,9 @@ void printTree(NODE* p){
     	case TYPE_FLOAT:
     		cout << "TYPE_FLOAT";
     		break;
+    	case ELLIPSISS:
+    		cout << "ELLIPSIS";
+    		break;
     
     		
     	//Write all the binary rules here
@@ -699,6 +705,8 @@ void printTree(NODE* p){
     		if(p->symbol == MULT)cout << "[MULT[";
     	case DECLARATION:
     		if(p->symbol == DECLARATION)cout << "[DECLARATION[";
+    	case INITIALIZE:
+    		if(p->symbol == INITIALIZE)cout << "[INITIALIZE[";
     		printTree(p->bp++);
     		cout << "],[";
     		printTree(p->bp++);
@@ -707,6 +715,10 @@ void printTree(NODE* p){
     		
     	case BLOCK:
     		cout<< "BLOCK_LIST[";
+    	case POINTER:
+    		if(p->symbol == POINTER)cout<< "POINTER[";
+    	case CONSTT:
+    		if(p->symbol == CONSTT)cout<< "CONSTT[";
     	case DECLARATION_LIST:
     		if(p->symbol == DECLARATION_LIST)cout<< "DECLARATION_LIST[";
     	case FUNC_DEF:
