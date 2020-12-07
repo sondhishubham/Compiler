@@ -43,6 +43,9 @@ enum Symbol{
     FUNC_DECLARATOR,
     CODE_SECTIONS,
     
+    CONTINUEE,
+    BREAKK,
+    RETURNN,
     POINTER,
     CONSTT,
     ELLIPSISS,

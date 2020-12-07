@@ -42,7 +42,7 @@ void yyerror(const char *s);
 
 %token	ALIGNAS ALIGNOF ATOMIC GENERIC NORETURN STATIC_ASSERT THREAD_LOCAL
 
-%type <node_ptr> primary_expression constant postfix_expression unary_expression multiplicative_expression additive_expression shift_expression cast_expression relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression conditional_expression assignment_expression string expression expression_statement block_item block_item_list statement type_specifier declaration_specifiers compound_statement function_definition declarator direct_declarator parameter_type_list parameter_list parameter_declaration external_declaration translation_unit declaration init_declarator init_declarator_list initializer
+%type <node_ptr> primary_expression constant postfix_expression unary_expression multiplicative_expression additive_expression shift_expression cast_expression relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression conditional_expression assignment_expression string expression expression_statement block_item block_item_list statement type_specifier declaration_specifiers compound_statement function_definition declarator direct_declarator parameter_type_list parameter_list parameter_declaration external_declaration translation_unit declaration init_declarator init_declarator_list initializer jump_statement
 
 %start  start_unit
 %%
@@ -480,7 +480,7 @@ statement
 	: expression_statement									{$$ = $1;}
 //	| selection_statement
 //	| iteration_statement
-//	| jump_statement
+	| jump_statement
 	;
 
 //labeled_statement
@@ -524,13 +524,13 @@ expression_statement
 //	| FOR '(' declaration expression_statement expression ')' statement
 //	;
 
-//jump_statement
+jump_statement
 //	: GOTO IDENTIFIER ';'
-//	| CONTINUE ';'
-//	| BREAK ';'
-//	| RETURN ';'
-//	| RETURN expression ';'
-//	;
+	: CONTINUE ';'																{$$ = new NODE(CONTINUEE, NULL, 0);}
+	| BREAK ';'																	{$$ = new NODE(BREAKK, NULL, 0);}
+	| RETURN ';'																{$$ = new NODE(RETURNN, NULL, 0);}
+	| RETURN expression ';'														{$$ = createUnaryNode(RETURNN, $2);}
+	;
 
 start_unit
 	:translation_unit															{printTree($1);cout<<'\n';}
@@ -642,7 +642,11 @@ void printTree(NODE* p){
     	case ELLIPSISS:
     		cout << "ELLIPSIS";
     		break;
-    
+    	case CONTINUEE:
+    		cout << "CONTINUE";
+    		break;
+    	case BREAKK:
+    		cout << "BREAK";
     		
     	//Write all the binary rules here
     	case PLUS:
@@ -715,6 +719,8 @@ void printTree(NODE* p){
     		
     	case BLOCK:
     		cout<< "BLOCK_LIST[";
+    	case RETURNN:
+    		if(p->symbol == RETURNN)cout<< "RETURN[";
     	case POINTER:
     		if(p->symbol == POINTER)cout<< "POINTER[";
     	case CONSTT:
