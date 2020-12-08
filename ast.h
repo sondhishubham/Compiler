@@ -63,7 +63,9 @@ enum Symbol{
     DECLARATION_LIST,  // int m,j,k,n (m,j,k,n is the list)
     BLOCK,
     PARAMETERS,
-    FUNC_DEF
+    FUNC_DEF,
+    ARGUMENTS,
+    FUNC_CALL
 };
 
 typedef enum Symbol SYMBOL;

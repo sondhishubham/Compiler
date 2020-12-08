@@ -42,7 +42,7 @@ void yyerror(const char *s);
 
 %token	ALIGNAS ALIGNOF ATOMIC GENERIC NORETURN STATIC_ASSERT THREAD_LOCAL
 
-%type <node_ptr> primary_expression constant postfix_expression unary_expression multiplicative_expression additive_expression shift_expression cast_expression relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression conditional_expression assignment_expression string expression expression_statement block_item block_item_list statement type_specifier declaration_specifiers compound_statement function_definition declarator direct_declarator parameter_type_list parameter_list parameter_declaration external_declaration translation_unit declaration init_declarator init_declarator_list initializer jump_statement
+%type <node_ptr> primary_expression constant postfix_expression unary_expression multiplicative_expression additive_expression shift_expression cast_expression relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression conditional_expression assignment_expression string expression expression_statement block_item block_item_list statement type_specifier declaration_specifiers compound_statement function_definition declarator direct_declarator parameter_type_list parameter_list parameter_declaration external_declaration translation_unit declaration init_declarator init_declarator_list initializer jump_statement argument_expression_list
 
 %start  start_unit
 %%
@@ -85,10 +85,10 @@ string
 //	;
 
 postfix_expression
-	: primary_expression											{$$ = $1;}
-//	| postfix_expression '[' expression ']'
-//	| postfix_expression '(' ')'
-//	| postfix_expression '(' argument_expression_list ')'
+	: primary_expression												{$$ = $1;}
+//	| postfix_expression '[' expression ']'		
+	| postfix_expression '(' ')'										{$$ = createUnaryNode(FUNC_CALL, $1);}
+	| postfix_expression '(' argument_expression_list ')'				{$$ = createUnaryNode(FUNC_CALL, $1);addChild($$,$3);}
 //	| postfix_expression '.' IDENTIFIER
 //	| postfix_expression PTR_OP IDENTIFIER
 //	| postfix_expression INC_OP
@@ -97,10 +97,12 @@ postfix_expression
 //	| '(' type_name ')' '{' initializer_list ',' '}'
 	;
 
-//argument_expression_list
-//	: assignment_expression
-//	| argument_expression_list ',' assignment_expression
-//	;
+	// I changed the assignment_expression to logical_or_expression
+
+argument_expression_list
+	: logical_or_expression											{$$ = createUnaryNode(ARGUMENTS, $1);}
+	| argument_expression_list ',' logical_or_expression			{NODE* k = createUnaryNode(ARGUMENTS, $3); $$ = $1; addChild($$,k);}
+	;
 
 unary_expression
 	: postfix_expression											{$$ = $1;}
@@ -719,6 +721,10 @@ void printTree(NODE* p){
     		
     	case BLOCK:
     		cout<< "BLOCK_LIST[";
+    	case FUNC_CALL:
+    		if(p->symbol == FUNC_CALL)cout<< "FUNC_CALL[";
+    	case ARGUMENTS:	
+    		if(p->symbol == ARGUMENTS)cout<< "ARGUMENTS[";
     	case RETURNN:
     		if(p->symbol == RETURNN)cout<< "RETURN[";
     	case POINTER:

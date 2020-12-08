@@ -1,14 +1,7 @@
-int printf(char const *arg,...);
+int printf(char const *format, ...);
 
-void simple_arith_with_arg() {
-  return;
+int main(int argc, char **argv)
+{
+  printf("hello, world\n");
+  return 0;
 }
-
-
-
-
-
-
-
-
-
