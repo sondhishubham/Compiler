@@ -74,7 +74,7 @@
 
 using namespace std;
 
-NODE* createFunction(NODE*,NODE*,NODE*);
+NODE* createTertiaryNode(SYMBOL,NODE*,NODE*,NODE*);
 NODE* createUnaryNode(SYMBOL, NODE*);
 NODE* createBinaryNode(SYMBOL, NODE*, NODE*);
 void addChild(NODE*, NODE*);
@@ -540,16 +540,16 @@ union yyalloc
 /* YYFINAL -- State number of the termination state.  */
 #define YYFINAL  26
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   199
+#define YYLAST   252
 
 /* YYNTOKENS -- Number of terminals.  */
 #define YYNTOKENS  93
 /* YYNNTS -- Number of nonterminals.  */
-#define YYNNTS  42
+#define YYNNTS  43
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  104
+#define YYNRULES  107
 /* YYNSTATES -- Number of states.  */
-#define YYNSTATES  161
+#define YYNSTATES  169
 
 #define YYUNDEFTOK  2
 #define YYMAXUTOK   330
@@ -612,9 +612,9 @@ static const yytype_int16 yyrline[] =
      201,   202,   203,   204,   205,   206,   210,   220,   228,   229,
      230,   240,   241,   245,   246,   259,   260,   261,   262,   263,
      264,   265,   268,   357,   358,   362,   363,   373,   374,   392,
-     394,   398,   399,   403,   405,   451,   482,   485,   495,   496,
-     500,   501,   505,   506,   511,   531,   532,   533,   534,   538,
-     541,   542,   546,   547,   552
+     394,   398,   399,   403,   405,   453,   484,   485,   487,   497,
+     498,   502,   503,   507,   508,   513,   517,   518,   533,   534,
+     535,   536,   540,   543,   544,   548,   549,   554
 };
 #endif
 
@@ -648,8 +648,9 @@ static const char *const yytname[] =
   "init_declarator", "type_specifier", "declarator", "direct_declarator",
   "parameter_type_list", "parameter_list", "parameter_declaration",
   "initializer", "statement", "compound_statement", "block_item_list",
-  "block_item", "expression_statement", "jump_statement", "start_unit",
-  "translation_unit", "external_declaration", "function_definition", YY_NULLPTR
+  "block_item", "expression_statement", "selection_statement",
+  "jump_statement", "start_unit", "translation_unit",
+  "external_declaration", "function_definition", YY_NULLPTR
 };
 #endif
 
@@ -671,7 +672,7 @@ static const yytype_int16 yytoknum[] =
 };
 # endif
 
-#define YYPACT_NINF (-60)
+#define YYPACT_NINF (-158)
 
 #define yypact_value_is_default(Yyn) \
   ((Yyn) == YYPACT_NINF)
@@ -685,23 +686,23 @@ static const yytype_int16 yytoknum[] =
      STATE-NUM.  */
 static const yytype_int16 yypact[] =
 {
-     126,   147,   -60,   -60,   -60,   -60,   -60,   -60,   -60,   -60,
-     -60,    13,   -21,    25,   126,   -60,   -60,   -60,   -60,    13,
-      13,   -59,   -60,   -19,   -46,   -60,   -60,   -60,   -26,   -60,
-      13,   -60,    18,    -2,   -60,    76,   -60,   -60,   -16,   -60,
-     -60,   -60,    18,   -60,   -60,   -60,   -13,   -60,   -60,   -12,
-     -45,    45,    12,    59,    -6,     1,    14,   110,   112,   -60,
-      42,    43,     5,   -60,    84,   112,   -60,   -60,    56,   -60,
-      13,   -60,    11,   -60,   -60,   -60,   -60,    13,    70,    80,
-     -60,    77,     8,    18,    18,    18,    18,    18,    18,    18,
-      18,    18,    18,    18,    18,    18,    18,    18,    18,    18,
-      18,   -60,   -60,   -60,    69,    18,    18,    18,    18,    18,
-      18,    18,    18,    18,    18,    18,   -60,   -60,   -60,   -60,
-     -60,   107,   -60,   -60,    38,   112,   -60,   -60,   -60,   -12,
-     -12,   -45,   -45,    45,    45,    45,    45,    12,    12,    59,
-      -6,     1,    14,   110,   -60,   -60,   -60,   -60,   -60,   -60,
-     -60,   -60,   -60,   -60,   -60,   -60,   -60,   -60,   -60,    18,
-     112
+     175,     6,  -158,  -158,  -158,  -158,  -158,  -158,  -158,  -158,
+    -158,    29,   -27,    35,   175,  -158,  -158,  -158,  -158,    29,
+      29,   -66,  -158,   -83,   -47,  -158,  -158,  -158,   -25,  -158,
+      29,  -158,    17,    54,  -158,   119,  -158,  -158,   -15,  -158,
+    -158,  -158,    17,  -158,  -158,  -158,    12,  -158,  -158,   -48,
+     -57,    26,    22,    25,     5,    14,    31,    94,   107,  -158,
+      51,    38,    39,    10,  -158,   163,   107,  -158,  -158,    45,
+    -158,    29,  -158,   106,  -158,  -158,  -158,  -158,  -158,    29,
+      59,    60,  -158,    62,    13,    17,    17,    17,    17,    17,
+      17,    17,    17,    17,    17,    17,    17,    17,    17,    17,
+      17,    17,    17,    17,  -158,  -158,  -158,    47,    17,    17,
+      17,    17,    17,    17,    17,    17,    17,    17,    17,  -158,
+    -158,  -158,  -158,  -158,   159,  -158,  -158,   -32,   107,  -158,
+    -158,  -158,   -48,   -48,   -57,   -57,    26,    26,    26,    26,
+      22,    22,    25,     5,    14,    31,    94,    63,  -158,  -158,
+    -158,  -158,  -158,  -158,  -158,  -158,  -158,  -158,  -158,  -158,
+    -158,  -158,  -158,    17,    57,   107,    81,    57,  -158
 };
 
   /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
@@ -710,42 +711,42 @@ static const yytype_int16 yypact[] =
 static const yytype_int8 yydefact[] =
 {
        0,     0,    72,    66,    67,    68,    69,    70,    71,    65,
-     103,     0,    58,     0,    99,   100,   102,    59,    75,     0,
-       0,     0,    61,    64,    74,    60,     1,   101,     0,    73,
-       0,    57,     0,     0,   104,     0,    76,    62,    64,     6,
+     106,     0,    58,     0,   102,   103,   105,    59,    75,     0,
+       0,     0,    61,    64,    74,    60,     1,   104,     0,    73,
+       0,    57,     0,     0,   107,     0,    76,    62,    64,     6,
        7,     2,     0,     8,     3,     4,    13,    14,    15,    19,
       22,    25,    30,    33,    35,    37,    39,    41,    85,    63,
-       0,     0,     0,    88,    14,    43,    44,    56,     0,    92,
-       0,    93,     0,    90,    86,    87,    78,    84,     0,    80,
-      81,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,    89,    14,    43,    44,    56,     0,
+      93,     0,    94,     0,    91,    86,    87,    88,    78,    84,
+       0,    80,    81,     0,     0,     0,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,    95,    96,    97,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,    94,    89,    91,    83,
-      77,     0,     5,     9,     0,    11,    16,    17,    18,    20,
-      21,    23,    24,    28,    29,    26,    27,    31,    32,    34,
-      36,    38,    40,    42,    98,    46,    47,    48,    49,    50,
-      51,    52,    53,    54,    55,    45,    79,    82,    10,     0,
-      12
+       0,     0,     0,     0,    98,    99,   100,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,    95,
+      90,    92,    83,    77,     0,     5,     9,     0,    11,    16,
+      17,    18,    20,    21,    23,    24,    28,    29,    26,    27,
+      31,    32,    34,    36,    38,    40,    42,     0,   101,    46,
+      47,    48,    49,    50,    51,    52,    53,    54,    55,    45,
+      79,    82,    10,     0,     0,    12,    97,     0,    96
 };
 
   /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int16 yypgoto[] =
 {
-     -60,   -60,   -60,   -60,   -60,   -60,    29,    15,    -4,    34,
-     -58,    35,    64,    65,    63,    66,    93,   -32,   -60,    72,
-     -38,   -27,   -28,   -60,   136,   171,     9,   -60,   -60,   -60,
-      73,   -60,   -60,   -60,   -60,   127,   -60,   -60,   -60,   -60,
-     184,   -60
+    -158,  -158,  -158,  -158,  -158,  -158,   -33,   -14,   -20,    24,
+     -28,    21,    44,    46,    43,    52,    50,   -31,  -158,   118,
+     -40,   -29,   -30,  -158,   128,   158,     8,  -158,  -158,  -158,
+      42,  -158,  -157,  -158,  -158,    97,  -158,  -158,  -158,  -158,
+    -158,   157,  -158
 };
 
   /* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int8 yydefgoto[] =
 {
-      -1,    43,    44,    45,    46,   124,    47,    48,    49,    50,
-      51,    52,    53,    54,    55,    56,    57,    65,    66,    67,
-      68,    10,    11,    21,    22,    12,    38,    24,    78,    79,
-      80,    59,    71,    34,    72,    73,    74,    75,    13,    14,
-      15,    16
+      -1,    43,    44,    45,    46,   127,    47,    48,    49,    50,
+      51,    52,    53,    54,    55,    56,    57,    66,    67,    68,
+      69,    10,    11,    21,    22,    12,    38,    24,    80,    81,
+      82,    59,    72,    34,    73,    74,    75,    76,    77,    13,
+      14,    15,    16
 };
 
   /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
@@ -753,50 +754,62 @@ static const yytype_int8 yydefgoto[] =
      number is the opposite.  If YYTABLE_NINF, syntax error.  */
 static const yytype_uint8 yytable[] =
 {
-      58,    39,    40,    41,    81,    70,    69,    77,    39,    40,
-      41,    39,    40,    41,    39,    40,    41,    25,    18,    30,
-      23,    39,    40,    41,   104,    26,    90,    91,    28,    29,
-      35,    31,   133,   134,   135,   136,     1,    86,    87,     2,
-       3,     4,     5,     6,    70,    69,     7,     8,     9,     1,
-     125,    36,     2,     3,     4,     5,     6,    88,    89,     7,
-       8,     9,    64,    82,    60,    61,    62,    83,    84,    85,
-      32,    64,    33,    32,    42,    94,    95,    60,    61,    62,
-      96,    42,   129,   130,    42,   123,   119,    42,    97,    19,
-      63,    64,    20,    77,    42,   103,    92,    93,   126,   127,
-     128,    64,    98,   117,   105,   106,   107,   108,   109,   110,
-     111,   112,   113,   114,     1,   158,   159,     2,     3,     4,
-       5,     6,   131,   132,     7,     8,     9,   160,    99,   137,
-     138,   100,   101,   102,    64,    64,    64,    64,    64,    64,
-      64,    64,    64,    64,    64,     1,   116,   120,     2,     3,
-       4,     5,     6,    76,   122,     7,     8,     9,   121,   144,
-     139,   141,   140,   156,     1,   142,    37,     2,     3,     4,
-       5,     6,    17,   115,     7,     8,     9,   145,   146,   147,
-     148,   149,   150,   151,   152,   153,   154,   155,     2,     3,
-       4,     5,     6,   143,   157,     7,     8,     9,    27,   118
+      65,    58,    83,    71,    70,    79,    32,   166,    33,    65,
+     168,    25,    30,    39,    40,    41,    39,    40,    41,    23,
+      39,    40,    41,   107,    31,    88,    89,    28,    29,    35,
+      65,    85,    86,    87,    18,    26,    92,    93,    90,    91,
+      65,    96,    97,    71,    70,   162,   163,     2,     3,     4,
+       5,     6,    36,   128,     7,     8,     9,    39,    40,    41,
+      39,    40,    41,   147,   136,   137,   138,   139,   132,   133,
+      65,   129,   130,   131,    32,    65,    65,    65,    65,    65,
+      65,    65,    65,    65,    65,    65,    42,   122,    84,    42,
+     126,    98,     1,    42,    79,     2,     3,     4,     5,     6,
+     106,    99,     7,     8,     9,    19,    94,    95,    20,    39,
+      40,    41,   101,    60,   134,   135,    60,   140,   141,   100,
+      61,    62,    63,    61,    62,    63,   102,   103,   104,   105,
+      42,    65,   165,    42,    65,   119,   123,   148,   124,   125,
+     164,   167,   142,   144,     1,   143,    64,     2,     3,     4,
+       5,     6,   146,   145,     7,     8,     9,     1,    37,    17,
+       2,     3,     4,     5,     6,    60,   161,     7,     8,     9,
+     121,    27,    61,    62,    63,     0,     0,     0,     0,     0,
+       0,     0,    42,   108,   109,   110,   111,   112,   113,   114,
+     115,   116,   117,     0,     0,     0,    78,     1,   120,     0,
+       2,     3,     4,     5,     6,     0,     0,     7,     8,     9,
+       0,     0,     0,     1,     0,   160,     2,     3,     4,     5,
+       6,     0,     0,     7,     8,     9,   149,   150,   151,   152,
+     153,   154,   155,   156,   157,   158,   159,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,   118
 };
 
-static const yytype_uint8 yycheck[] =
+static const yytype_int16 yycheck[] =
 {
-      32,     3,     4,     5,    42,    33,    33,    35,     3,     4,
-       5,     3,     4,     5,     3,     4,     5,    38,     5,    78,
-      11,     3,     4,     5,    62,     0,    14,    15,    19,    20,
-      76,    90,    90,    91,    92,    93,    38,    82,    83,    41,
-      42,    43,    44,    45,    72,    72,    48,    49,    50,    38,
-      82,    77,    41,    42,    43,    44,    45,    12,    13,    48,
-      49,    50,    33,    76,    66,    67,    68,    79,    80,    81,
-      89,    42,    91,    89,    76,    16,    17,    66,    67,    68,
-      86,    76,    86,    87,    76,    77,    77,    76,    87,    76,
-      92,    62,    79,   121,    76,    90,    84,    85,    83,    84,
-      85,    72,    88,    92,    20,    21,    22,    23,    24,    25,
-      26,    27,    28,    29,    38,    77,    78,    41,    42,    43,
-      44,    45,    88,    89,    48,    49,    50,   159,    18,    94,
-      95,    19,    90,    90,   105,   106,   107,   108,   109,   110,
-     111,   112,   113,   114,   115,    38,    90,    77,    41,    42,
-      43,    44,    45,    77,    77,    48,    49,    50,    78,    90,
-      96,    98,    97,    56,    38,    99,    30,    41,    42,    43,
-      44,    45,     1,    89,    48,    49,    50,   105,   106,   107,
-     108,   109,   110,   111,   112,   113,   114,   115,    41,    42,
-      43,    44,    45,   100,   121,    48,    49,    50,    14,    72
+      33,    32,    42,    33,    33,    35,    89,   164,    91,    42,
+     167,    38,    78,     3,     4,     5,     3,     4,     5,    11,
+       3,     4,     5,    63,    90,    82,    83,    19,    20,    76,
+      63,    79,    80,    81,     5,     0,    14,    15,    12,    13,
+      73,    16,    17,    73,    73,    77,    78,    41,    42,    43,
+      44,    45,    77,    84,    48,    49,    50,     3,     4,     5,
+       3,     4,     5,   103,    92,    93,    94,    95,    88,    89,
+     103,    85,    86,    87,    89,   108,   109,   110,   111,   112,
+     113,   114,   115,   116,   117,   118,    76,    79,    76,    76,
+      77,    86,    38,    76,   124,    41,    42,    43,    44,    45,
+      90,    87,    48,    49,    50,    76,    84,    85,    79,     3,
+       4,     5,    18,    59,    90,    91,    59,    96,    97,    88,
+      66,    67,    68,    66,    67,    68,    19,    76,    90,    90,
+      76,   164,   163,    76,   167,    90,    77,    90,    78,    77,
+      77,    60,    98,   100,    38,    99,    92,    41,    42,    43,
+      44,    45,   102,   101,    48,    49,    50,    38,    30,     1,
+      41,    42,    43,    44,    45,    59,   124,    48,    49,    50,
+      73,    14,    66,    67,    68,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    76,    20,    21,    22,    23,    24,    25,    26,
+      27,    28,    29,    -1,    -1,    -1,    77,    38,    92,    -1,
+      41,    42,    43,    44,    45,    -1,    -1,    48,    49,    50,
+      -1,    -1,    -1,    38,    -1,    56,    41,    42,    43,    44,
+      45,    -1,    -1,    48,    49,    50,   108,   109,   110,   111,
+     112,   113,   114,   115,   116,   117,   118,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    89
 };
 
   /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
@@ -804,22 +817,22 @@ static const yytype_uint8 yycheck[] =
 static const yytype_uint8 yystos[] =
 {
        0,    38,    41,    42,    43,    44,    45,    48,    49,    50,
-     114,   115,   118,   131,   132,   133,   134,   118,     5,    76,
-      79,   116,   117,   119,   120,    38,     0,   133,   119,   119,
+     114,   115,   118,   132,   133,   134,   135,   118,     5,    76,
+      79,   116,   117,   119,   120,    38,     0,   134,   119,   119,
       78,    90,    89,    91,   126,    76,    77,   117,   119,     3,
        4,     5,    76,    94,    95,    96,    97,    99,   100,   101,
      102,   103,   104,   105,   106,   107,   108,   109,   110,   124,
-      66,    67,    68,    92,    99,   110,   111,   112,   113,   114,
-     115,   125,   127,   128,   129,   130,    77,   115,   121,   122,
-     123,   113,    76,    79,    80,    81,    82,    83,    12,    13,
-      14,    15,    84,    85,    16,    17,    86,    87,    88,    18,
-      19,    90,    90,    90,   113,    20,    21,    22,    23,    24,
-      25,    26,    27,    28,    29,    89,    90,    92,   128,   119,
-      77,    78,    77,    77,    98,   110,   100,   100,   100,   101,
-     101,   102,   102,   103,   103,   103,   103,   104,   104,   105,
-     106,   107,   108,   109,    90,   112,   112,   112,   112,   112,
-     112,   112,   112,   112,   112,   112,    56,   123,    77,    78,
-     110
+      59,    66,    67,    68,    92,    99,   110,   111,   112,   113,
+     114,   115,   125,   127,   128,   129,   130,   131,    77,   115,
+     121,   122,   123,   113,    76,    79,    80,    81,    82,    83,
+      12,    13,    14,    15,    84,    85,    16,    17,    86,    87,
+      88,    18,    19,    76,    90,    90,    90,   113,    20,    21,
+      22,    23,    24,    25,    26,    27,    28,    29,    89,    90,
+      92,   128,   119,    77,    78,    77,    77,    98,   110,   100,
+     100,   100,   101,   101,   102,   102,   103,   103,   103,   103,
+     104,   104,   105,   106,   107,   108,   109,   113,    90,   112,
+     112,   112,   112,   112,   112,   112,   112,   112,   112,   112,
+      56,   123,    77,    78,    77,   110,   125,    60,   125
 };
 
   /* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
@@ -833,9 +846,9 @@ static const yytype_uint8 yyr1[] =
      112,   112,   112,   112,   112,   112,   113,   114,   115,   115,
      115,   116,   116,   117,   117,   118,   118,   118,   118,   118,
      118,   118,   118,   119,   119,   120,   120,   120,   120,   121,
-     121,   122,   122,   123,   123,   124,   125,   125,   126,   126,
-     127,   127,   128,   128,   129,   130,   130,   130,   130,   131,
-     132,   132,   133,   133,   134
+     121,   122,   122,   123,   123,   124,   125,   125,   125,   126,
+     126,   127,   127,   128,   128,   129,   130,   130,   131,   131,
+     131,   131,   132,   133,   133,   134,   134,   135
 };
 
   /* YYR2[YYN] -- Number of symbols on the right hand side of rule YYN.  */
@@ -849,9 +862,9 @@ static const yytype_int8 yyr2[] =
        3,     3,     3,     3,     3,     3,     1,     3,     1,     2,
        2,     1,     3,     3,     1,     1,     1,     1,     1,     1,
        1,     1,     1,     2,     1,     1,     3,     4,     3,     3,
-       1,     1,     3,     2,     1,     1,     1,     1,     2,     3,
-       1,     2,     1,     1,     2,     2,     2,     2,     3,     1,
-       1,     2,     1,     1,     3
+       1,     1,     3,     2,     1,     1,     1,     1,     1,     2,
+       3,     1,     2,     1,     1,     2,     7,     5,     2,     2,
+       2,     3,     1,     1,     2,     1,     1,     3
 };
 
 
@@ -1549,617 +1562,635 @@ yyreduce:
   case 2:
 #line 51 "c.y"
                                 {char* val = (yyvsp[0].word);(yyval.node_ptr)= new NODE(IDENT,(void*)val,0);}
-#line 1553 "c.tab.cpp"
+#line 1566 "c.tab.cpp"
     break;
 
   case 3:
 #line 52 "c.y"
                                         {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 1559 "c.tab.cpp"
+#line 1572 "c.tab.cpp"
     break;
 
   case 4:
 #line 53 "c.y"
                             {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 1565 "c.tab.cpp"
+#line 1578 "c.tab.cpp"
     break;
 
   case 5:
 #line 54 "c.y"
                             {(yyval.node_ptr) = (yyvsp[-1].node_ptr);}
-#line 1571 "c.tab.cpp"
+#line 1584 "c.tab.cpp"
     break;
 
   case 6:
 #line 59 "c.y"
                                 {int* val = (int*)malloc(sizeof(int));*val = (yyvsp[0].number);(yyval.node_ptr)= new NODE(INTEGER,(void*)val,0);}
-#line 1577 "c.tab.cpp"
+#line 1590 "c.tab.cpp"
     break;
 
   case 7:
 #line 69 "c.y"
                             {char* val = (yyvsp[0].word);(yyval.node_ptr)= new NODE(STRING,(void*)val,0);}
-#line 1583 "c.tab.cpp"
+#line 1596 "c.tab.cpp"
     break;
 
   case 8:
 #line 88 "c.y"
                                                                                                                         {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 1589 "c.tab.cpp"
+#line 1602 "c.tab.cpp"
     break;
 
   case 9:
 #line 90 "c.y"
                                                                                                                 {(yyval.node_ptr) = createUnaryNode(FUNC_CALL, (yyvsp[-2].node_ptr));}
-#line 1595 "c.tab.cpp"
+#line 1608 "c.tab.cpp"
     break;
 
   case 10:
 #line 91 "c.y"
-                                                                                        {(yyval.node_ptr) = createUnaryNode(FUNC_CALL, (yyvsp[-3].node_ptr));addChild((yyval.node_ptr),(yyvsp[-1].node_ptr));}
-#line 1601 "c.tab.cpp"
+                                                                                        {(yyval.node_ptr) = createUnaryNode(FUNC_CALL, (yyvsp[-3].node_ptr));NODE* m = createUnaryNode(ARGUMENTS, (yyvsp[-1].node_ptr));addChild((yyval.node_ptr),m);}
+#line 1614 "c.tab.cpp"
     break;
 
   case 11:
 #line 103 "c.y"
                                                                                                                 {(yyval.node_ptr) = createUnaryNode(ARGUMENTS, (yyvsp[0].node_ptr));}
-#line 1607 "c.tab.cpp"
+#line 1620 "c.tab.cpp"
     break;
 
   case 12:
 #line 104 "c.y"
                                                                                 {NODE* k = createUnaryNode(ARGUMENTS, (yyvsp[0].node_ptr)); (yyval.node_ptr) = (yyvsp[-2].node_ptr); addChild((yyval.node_ptr),k);}
-#line 1613 "c.tab.cpp"
+#line 1626 "c.tab.cpp"
     break;
 
   case 13:
 #line 108 "c.y"
                                                                                                                 {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 1619 "c.tab.cpp"
+#line 1632 "c.tab.cpp"
     break;
 
   case 14:
 #line 127 "c.y"
                                                                                                                         {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 1625 "c.tab.cpp"
+#line 1638 "c.tab.cpp"
     break;
 
   case 15:
 #line 132 "c.y"
                                                                                                                         {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 1631 "c.tab.cpp"
+#line 1644 "c.tab.cpp"
     break;
 
   case 16:
 #line 133 "c.y"
                                                                                         {(yyval.node_ptr) = createBinaryNode(MULT, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1637 "c.tab.cpp"
+#line 1650 "c.tab.cpp"
     break;
 
   case 17:
 #line 134 "c.y"
                                                                                         {(yyval.node_ptr) = createBinaryNode(DIVIDE, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1643 "c.tab.cpp"
+#line 1656 "c.tab.cpp"
     break;
 
   case 18:
 #line 135 "c.y"
                                                                                         {(yyval.node_ptr) = createBinaryNode(REMAINDER, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1649 "c.tab.cpp"
+#line 1662 "c.tab.cpp"
     break;
 
   case 19:
 #line 139 "c.y"
                                                                                                                 {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 1655 "c.tab.cpp"
+#line 1668 "c.tab.cpp"
     break;
 
   case 20:
 #line 140 "c.y"
                                                                                 {(yyval.node_ptr) = createBinaryNode(PLUS, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1661 "c.tab.cpp"
+#line 1674 "c.tab.cpp"
     break;
 
   case 21:
 #line 141 "c.y"
                                                                                         {(yyval.node_ptr) = createBinaryNode(SUB, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1667 "c.tab.cpp"
+#line 1680 "c.tab.cpp"
     break;
 
   case 22:
 #line 145 "c.y"
                                                                                                                 {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 1673 "c.tab.cpp"
+#line 1686 "c.tab.cpp"
     break;
 
   case 23:
 #line 146 "c.y"
                                                                                         {(yyval.node_ptr) = createBinaryNode(LEFT_SHIFT, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1679 "c.tab.cpp"
+#line 1692 "c.tab.cpp"
     break;
 
   case 24:
 #line 147 "c.y"
                                                                                         {(yyval.node_ptr) = createBinaryNode(RIGHT_SHIFT, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1685 "c.tab.cpp"
+#line 1698 "c.tab.cpp"
     break;
 
   case 25:
 #line 151 "c.y"
                                                                         {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 1691 "c.tab.cpp"
+#line 1704 "c.tab.cpp"
     break;
 
   case 26:
 #line 152 "c.y"
                                                                                         {(yyval.node_ptr) = createBinaryNode(LESS_THAN, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1697 "c.tab.cpp"
+#line 1710 "c.tab.cpp"
     break;
 
   case 27:
 #line 153 "c.y"
                                                                                         {(yyval.node_ptr) = createBinaryNode(GREATER_THAN, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1703 "c.tab.cpp"
+#line 1716 "c.tab.cpp"
     break;
 
   case 28:
 #line 154 "c.y"
                                                                                         {(yyval.node_ptr) = createBinaryNode(LESS_THAN_EQUAL_TO, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1709 "c.tab.cpp"
+#line 1722 "c.tab.cpp"
     break;
 
   case 29:
 #line 155 "c.y"
                                                                                         {(yyval.node_ptr) = createBinaryNode(GREATER_THAN_EQUAL_TO, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1715 "c.tab.cpp"
+#line 1728 "c.tab.cpp"
     break;
 
   case 30:
 #line 159 "c.y"
                                                                         {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 1721 "c.tab.cpp"
+#line 1734 "c.tab.cpp"
     break;
 
   case 31:
 #line 160 "c.y"
                                                                                         {(yyval.node_ptr) = createBinaryNode(EQUAL_TO, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1727 "c.tab.cpp"
+#line 1740 "c.tab.cpp"
     break;
 
   case 32:
 #line 161 "c.y"
                                                                                         {(yyval.node_ptr) = createBinaryNode(NOT_EQUAL_TO, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1733 "c.tab.cpp"
+#line 1746 "c.tab.cpp"
     break;
 
   case 33:
 #line 165 "c.y"
                                                                         {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 1739 "c.tab.cpp"
+#line 1752 "c.tab.cpp"
     break;
 
   case 34:
 #line 166 "c.y"
                                                                                                 {(yyval.node_ptr) = createBinaryNode(AND, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1745 "c.tab.cpp"
+#line 1758 "c.tab.cpp"
     break;
 
   case 35:
 #line 170 "c.y"
                                                                         {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 1751 "c.tab.cpp"
+#line 1764 "c.tab.cpp"
     break;
 
   case 36:
 #line 171 "c.y"
                                                                                         {(yyval.node_ptr) = createBinaryNode(EXCLUSIVE_OR, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1757 "c.tab.cpp"
+#line 1770 "c.tab.cpp"
     break;
 
   case 37:
 #line 175 "c.y"
                                                                         {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 1763 "c.tab.cpp"
+#line 1776 "c.tab.cpp"
     break;
 
   case 38:
 #line 176 "c.y"
                                                                                 {(yyval.node_ptr) = createBinaryNode(INCLUSIVE_OR, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1769 "c.tab.cpp"
+#line 1782 "c.tab.cpp"
     break;
 
   case 39:
 #line 180 "c.y"
                                                                         {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 1775 "c.tab.cpp"
+#line 1788 "c.tab.cpp"
     break;
 
   case 40:
 #line 181 "c.y"
                                                                                 {(yyval.node_ptr) = createBinaryNode(LOGICAL_AND, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1781 "c.tab.cpp"
+#line 1794 "c.tab.cpp"
     break;
 
   case 41:
 #line 185 "c.y"
                                                                         {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 1787 "c.tab.cpp"
+#line 1800 "c.tab.cpp"
     break;
 
   case 42:
 #line 186 "c.y"
                                                                                 {(yyval.node_ptr) = createBinaryNode(LOGICAL_OR, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1793 "c.tab.cpp"
+#line 1806 "c.tab.cpp"
     break;
 
   case 43:
 #line 190 "c.y"
                                                                                     {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 1799 "c.tab.cpp"
+#line 1812 "c.tab.cpp"
     break;
 
   case 44:
 #line 195 "c.y"
                                                                                     {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 1805 "c.tab.cpp"
+#line 1818 "c.tab.cpp"
     break;
 
   case 45:
 #line 196 "c.y"
                                                                                                 {(yyval.node_ptr) = createBinaryNode(ASSIGN, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1811 "c.tab.cpp"
+#line 1824 "c.tab.cpp"
     break;
 
   case 46:
 #line 197 "c.y"
                                                                                                                 {(yyval.node_ptr) = createBinaryNode(MUL_ASSIGNN, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1817 "c.tab.cpp"
+#line 1830 "c.tab.cpp"
     break;
 
   case 47:
 #line 198 "c.y"
                                                                                                                 {(yyval.node_ptr) = createBinaryNode(DIV_ASSIGNN, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1823 "c.tab.cpp"
+#line 1836 "c.tab.cpp"
     break;
 
   case 48:
 #line 199 "c.y"
                                                                                                                 {(yyval.node_ptr) = createBinaryNode(MOD_ASSIGNN, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1829 "c.tab.cpp"
+#line 1842 "c.tab.cpp"
     break;
 
   case 49:
 #line 200 "c.y"
                                                                                                                 {(yyval.node_ptr) = createBinaryNode(ADD_ASSIGNN, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1835 "c.tab.cpp"
+#line 1848 "c.tab.cpp"
     break;
 
   case 50:
 #line 201 "c.y"
                                                                                                                 {(yyval.node_ptr) = createBinaryNode(SUB_ASSIGNN, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1841 "c.tab.cpp"
+#line 1854 "c.tab.cpp"
     break;
 
   case 51:
 #line 202 "c.y"
                                                                                                         {(yyval.node_ptr) = createBinaryNode(LEFT_ASSIGNN, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1847 "c.tab.cpp"
+#line 1860 "c.tab.cpp"
     break;
 
   case 52:
 #line 203 "c.y"
                                                                                                         {(yyval.node_ptr) = createBinaryNode(RIGHT_ASSIGNN, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1853 "c.tab.cpp"
+#line 1866 "c.tab.cpp"
     break;
 
   case 53:
 #line 204 "c.y"
                                                                                                                 {(yyval.node_ptr) = createBinaryNode(AND_ASSIGNN, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1859 "c.tab.cpp"
+#line 1872 "c.tab.cpp"
     break;
 
   case 54:
 #line 205 "c.y"
                                                                                                                 {(yyval.node_ptr) = createBinaryNode(XOR_ASSIGNN, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1865 "c.tab.cpp"
+#line 1878 "c.tab.cpp"
     break;
 
   case 55:
 #line 206 "c.y"
                                                                                                                 {(yyval.node_ptr) = createBinaryNode(OR_ASSIGNN, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
-#line 1871 "c.tab.cpp"
+#line 1884 "c.tab.cpp"
     break;
 
   case 56:
 #line 210 "c.y"
                                                                                                                                         {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 1877 "c.tab.cpp"
+#line 1890 "c.tab.cpp"
     break;
 
   case 57:
 #line 220 "c.y"
                                                                         {(yyval.node_ptr) = createBinaryNode(DECLARATION,(yyvsp[-2].node_ptr),(yyvsp[-1].node_ptr));}
-#line 1883 "c.tab.cpp"
+#line 1896 "c.tab.cpp"
     break;
 
   case 58:
 #line 228 "c.y"
                                                                                                         {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 1889 "c.tab.cpp"
+#line 1902 "c.tab.cpp"
     break;
 
   case 59:
 #line 229 "c.y"
                                                                                                 {(yyval.node_ptr) = createUnaryNode(CONSTT, (yyvsp[0].node_ptr));}
-#line 1895 "c.tab.cpp"
+#line 1908 "c.tab.cpp"
     break;
 
   case 60:
 #line 230 "c.y"
                                                                                                 {(yyval.node_ptr) = createUnaryNode(CONSTT, (yyvsp[-1].node_ptr));}
-#line 1901 "c.tab.cpp"
+#line 1914 "c.tab.cpp"
     break;
 
   case 61:
 #line 240 "c.y"
                                                                                                         {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 1907 "c.tab.cpp"
+#line 1920 "c.tab.cpp"
     break;
 
   case 62:
 #line 241 "c.y"
                                                                                 {(yyval.node_ptr) = (yyvsp[-2].node_ptr); addChild((yyval.node_ptr), (yyvsp[0].node_ptr));}
-#line 1913 "c.tab.cpp"
+#line 1926 "c.tab.cpp"
     break;
 
   case 63:
 #line 245 "c.y"
                                                                                         {NODE* m = createBinaryNode(INITIALIZE, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr)); (yyval.node_ptr) = createUnaryNode(DECLARATION_LIST,m);}
-#line 1919 "c.tab.cpp"
+#line 1932 "c.tab.cpp"
     break;
 
   case 64:
 #line 246 "c.y"
                                                                                                         {(yyval.node_ptr) = createUnaryNode(DECLARATION_LIST, (yyvsp[0].node_ptr));}
-#line 1925 "c.tab.cpp"
+#line 1938 "c.tab.cpp"
     break;
 
   case 65:
 #line 259 "c.y"
                                                                                                                 {(yyval.node_ptr) = new NODE(TYPE_VOID,NULL,0);}
-#line 1931 "c.tab.cpp"
+#line 1944 "c.tab.cpp"
     break;
 
   case 66:
 #line 260 "c.y"
                                                                                                                 {(yyval.node_ptr) = new NODE(TYPE_CHAR,NULL,0);}
-#line 1937 "c.tab.cpp"
+#line 1950 "c.tab.cpp"
     break;
 
   case 67:
 #line 261 "c.y"
                                                                                                                 {(yyval.node_ptr) = new NODE(TYPE_SHORT,NULL,0);}
-#line 1943 "c.tab.cpp"
+#line 1956 "c.tab.cpp"
     break;
 
   case 68:
 #line 262 "c.y"
                                                                                                                 {(yyval.node_ptr) = new NODE(TYPE_INT,NULL,0);}
-#line 1949 "c.tab.cpp"
+#line 1962 "c.tab.cpp"
     break;
 
   case 69:
 #line 263 "c.y"
                                                                                                                 {(yyval.node_ptr) = new NODE(TYPE_LONG,NULL,0);}
-#line 1955 "c.tab.cpp"
+#line 1968 "c.tab.cpp"
     break;
 
   case 70:
 #line 264 "c.y"
                                                                                                                 {(yyval.node_ptr) = new NODE(TYPE_FLOAT,NULL,0);}
-#line 1961 "c.tab.cpp"
+#line 1974 "c.tab.cpp"
     break;
 
   case 71:
 #line 265 "c.y"
                                                                                                                 {(yyval.node_ptr) = new NODE(TYPE_DOUBLE,NULL,0);}
-#line 1967 "c.tab.cpp"
+#line 1980 "c.tab.cpp"
     break;
 
   case 72:
 #line 268 "c.y"
                                                                                                                 {(yyval.node_ptr) = new NODE(TYPE_BOOL,NULL,0);}
-#line 1973 "c.tab.cpp"
+#line 1986 "c.tab.cpp"
     break;
 
   case 73:
 #line 357 "c.y"
                                                                 {(yyval.node_ptr) = createUnaryNode(POINTER,(yyvsp[0].node_ptr));}
-#line 1979 "c.tab.cpp"
+#line 1992 "c.tab.cpp"
     break;
 
   case 74:
 #line 358 "c.y"
                                                                 {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 1985 "c.tab.cpp"
+#line 1998 "c.tab.cpp"
     break;
 
   case 75:
 #line 362 "c.y"
                                                                                                                                         {char* val = (yyvsp[0].word);(yyval.node_ptr)= new NODE(IDENT,(void*)val,0);}
-#line 1991 "c.tab.cpp"
+#line 2004 "c.tab.cpp"
     break;
 
   case 76:
 #line 363 "c.y"
                                                                                                                                 {(yyval.node_ptr) = (yyvsp[-1].node_ptr);}
-#line 1997 "c.tab.cpp"
+#line 2010 "c.tab.cpp"
     break;
 
   case 77:
 #line 373 "c.y"
                                                                                                         {(yyval.node_ptr) = createBinaryNode(FUNC_DECLARATOR, (yyvsp[-3].node_ptr), (yyvsp[-1].node_ptr));}
-#line 2003 "c.tab.cpp"
+#line 2016 "c.tab.cpp"
     break;
 
   case 78:
 #line 374 "c.y"
                                                                                                                                 {(yyval.node_ptr) = createUnaryNode(FUNC_DECLARATOR,(yyvsp[-2].node_ptr));}
-#line 2009 "c.tab.cpp"
+#line 2022 "c.tab.cpp"
     break;
 
   case 79:
 #line 392 "c.y"
                                                                                         {NODE*m = new NODE(ELLIPSISS,NULL,0); NODE*k = createUnaryNode(PARAMETERS,m);(yyval.node_ptr) = (yyvsp[-2].node_ptr); addChild((yyval.node_ptr),k);}
-#line 2015 "c.tab.cpp"
+#line 2028 "c.tab.cpp"
     break;
 
   case 80:
 #line 394 "c.y"
                                                                                                         {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 2021 "c.tab.cpp"
+#line 2034 "c.tab.cpp"
     break;
 
   case 81:
 #line 398 "c.y"
                                                                                                 {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 2027 "c.tab.cpp"
+#line 2040 "c.tab.cpp"
     break;
 
   case 82:
 #line 399 "c.y"
                                                                                 {(yyval.node_ptr)=(yyvsp[-2].node_ptr);addChild((yyval.node_ptr),(yyvsp[0].node_ptr));}
-#line 2033 "c.tab.cpp"
+#line 2046 "c.tab.cpp"
     break;
 
   case 83:
 #line 403 "c.y"
                                                                                         {NODE* m = createBinaryNode(DECLARATION, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr)); (yyval.node_ptr) = createUnaryNode(PARAMETERS,m);}
-#line 2039 "c.tab.cpp"
+#line 2052 "c.tab.cpp"
     break;
 
   case 84:
 #line 405 "c.y"
                                                                                                 {(yyval.node_ptr) = createUnaryNode(PARAMETERS, (yyvsp[0].node_ptr));}
-#line 2045 "c.tab.cpp"
+#line 2058 "c.tab.cpp"
     break;
 
   case 85:
-#line 451 "c.y"
+#line 453 "c.y"
                                                                                                         {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 2051 "c.tab.cpp"
+#line 2064 "c.tab.cpp"
     break;
 
   case 86:
-#line 482 "c.y"
+#line 484 "c.y"
                                                                                                 {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 2057 "c.tab.cpp"
+#line 2070 "c.tab.cpp"
     break;
 
-  case 88:
-#line 495 "c.y"
-                                                                                                                        {(yyval.node_ptr) = new NODE(BLOCK, NULL, 0);}
-#line 2063 "c.tab.cpp"
+  case 87:
+#line 485 "c.y"
+                                                                                                {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
+#line 2076 "c.tab.cpp"
     break;
 
   case 89:
-#line 496 "c.y"
-                                                                                                {(yyval.node_ptr) = (yyvsp[-1].node_ptr);}
-#line 2069 "c.tab.cpp"
+#line 497 "c.y"
+                                                                                                                        {(yyval.node_ptr) = new NODE(BLOCK, NULL, 0);}
+#line 2082 "c.tab.cpp"
     break;
 
   case 90:
-#line 500 "c.y"
-                                                                                                                {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 2075 "c.tab.cpp"
+#line 498 "c.y"
+                                                                                                {(yyval.node_ptr) = (yyvsp[-1].node_ptr);}
+#line 2088 "c.tab.cpp"
     break;
 
   case 91:
-#line 501 "c.y"
-                                                                                                {(yyval.node_ptr) = (yyvsp[-1].node_ptr); addChild((yyval.node_ptr),(yyvsp[0].node_ptr));}
-#line 2081 "c.tab.cpp"
+#line 502 "c.y"
+                                                                                                                {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
+#line 2094 "c.tab.cpp"
     break;
 
   case 92:
-#line 505 "c.y"
-                                                                                                                {(yyval.node_ptr) = createUnaryNode(BLOCK,(yyvsp[0].node_ptr));}
-#line 2087 "c.tab.cpp"
+#line 503 "c.y"
+                                                                                                {(yyval.node_ptr) = (yyvsp[-1].node_ptr); addChild((yyval.node_ptr),(yyvsp[0].node_ptr));}
+#line 2100 "c.tab.cpp"
     break;
 
   case 93:
-#line 506 "c.y"
-                                                                                                                        {(yyval.node_ptr) = createUnaryNode(BLOCK,(yyvsp[0].node_ptr));}
-#line 2093 "c.tab.cpp"
+#line 507 "c.y"
+                                                                                                                {(yyval.node_ptr) = createUnaryNode(BLOCK,(yyvsp[0].node_ptr));}
+#line 2106 "c.tab.cpp"
     break;
 
   case 94:
-#line 511 "c.y"
-                                                                                                                {(yyval.node_ptr) = (yyvsp[-1].node_ptr);}
-#line 2099 "c.tab.cpp"
+#line 508 "c.y"
+                                                                                                                        {(yyval.node_ptr) = createUnaryNode(BLOCK,(yyvsp[0].node_ptr));}
+#line 2112 "c.tab.cpp"
     break;
 
   case 95:
-#line 531 "c.y"
-                                                                                                                                                {(yyval.node_ptr) = new NODE(CONTINUEE, NULL, 0);}
-#line 2105 "c.tab.cpp"
+#line 513 "c.y"
+                                                                                                                {(yyval.node_ptr) = (yyvsp[-1].node_ptr);}
+#line 2118 "c.tab.cpp"
     break;
 
   case 96:
-#line 532 "c.y"
-                                                                                                                                                        {(yyval.node_ptr) = new NODE(BREAKK, NULL, 0);}
-#line 2111 "c.tab.cpp"
+#line 517 "c.y"
+                                                                                {(yyval.node_ptr) = createTertiaryNode(IFTHEN, (yyvsp[-4].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
+#line 2124 "c.tab.cpp"
     break;
 
   case 97:
-#line 533 "c.y"
-                                                                                                                                                {(yyval.node_ptr) = new NODE(RETURNN, NULL, 0);}
-#line 2117 "c.tab.cpp"
+#line 518 "c.y"
+                                                                                                {(yyval.node_ptr) = createBinaryNode(IFTHEN, (yyvsp[-2].node_ptr), (yyvsp[0].node_ptr));}
+#line 2130 "c.tab.cpp"
     break;
 
   case 98:
-#line 534 "c.y"
-                                                                                                                                        {(yyval.node_ptr) = createUnaryNode(RETURNN, (yyvsp[-1].node_ptr));}
-#line 2123 "c.tab.cpp"
+#line 533 "c.y"
+                                                                                                                                                {(yyval.node_ptr) = new NODE(CONTINUEE, NULL, 0);}
+#line 2136 "c.tab.cpp"
     break;
 
   case 99:
-#line 538 "c.y"
-                                                                                                                                                {printTree((yyvsp[0].node_ptr));cout<<'\n';}
-#line 2129 "c.tab.cpp"
+#line 534 "c.y"
+                                                                                                                                                        {(yyval.node_ptr) = new NODE(BREAKK, NULL, 0);}
+#line 2142 "c.tab.cpp"
     break;
 
   case 100:
-#line 541 "c.y"
-                                                                                                {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
-#line 2135 "c.tab.cpp"
+#line 535 "c.y"
+                                                                                                                                                {(yyval.node_ptr) = new NODE(RETURNN, NULL, 0);}
+#line 2148 "c.tab.cpp"
     break;
 
   case 101:
-#line 542 "c.y"
-                                                                                                                        {(yyval.node_ptr) = (yyvsp[-1].node_ptr);addChild((yyval.node_ptr),(yyvsp[0].node_ptr));}
-#line 2141 "c.tab.cpp"
+#line 536 "c.y"
+                                                                                                                                        {(yyval.node_ptr) = createUnaryNode(RETURNN, (yyvsp[-1].node_ptr));}
+#line 2154 "c.tab.cpp"
     break;
 
   case 102:
-#line 546 "c.y"
-                                                                                                                                        {(yyval.node_ptr) = createUnaryNode(CODE_SECTIONS,(yyvsp[0].node_ptr));}
-#line 2147 "c.tab.cpp"
+#line 540 "c.y"
+                                                                                                                                                {printTree((yyvsp[0].node_ptr));cout<<'\n';}
+#line 2160 "c.tab.cpp"
     break;
 
   case 103:
-#line 547 "c.y"
-                                                                                                                                                {(yyval.node_ptr) = createUnaryNode(CODE_SECTIONS,(yyvsp[0].node_ptr));}
-#line 2153 "c.tab.cpp"
+#line 543 "c.y"
+                                                                                                {(yyval.node_ptr) = (yyvsp[0].node_ptr);}
+#line 2166 "c.tab.cpp"
     break;
 
   case 104:
-#line 552 "c.y"
-                                                                                                        {(yyval.node_ptr) = createFunction((yyvsp[-2].node_ptr),(yyvsp[-1].node_ptr),(yyvsp[0].node_ptr));}
-#line 2159 "c.tab.cpp"
+#line 544 "c.y"
+                                                                                                                        {(yyval.node_ptr) = (yyvsp[-1].node_ptr);addChild((yyval.node_ptr),(yyvsp[0].node_ptr));}
+#line 2172 "c.tab.cpp"
+    break;
+
+  case 105:
+#line 548 "c.y"
+                                                                                                                                        {(yyval.node_ptr) = createUnaryNode(CODE_SECTIONS,(yyvsp[0].node_ptr));}
+#line 2178 "c.tab.cpp"
+    break;
+
+  case 106:
+#line 549 "c.y"
+                                                                                                                                                {(yyval.node_ptr) = createUnaryNode(CODE_SECTIONS,(yyvsp[0].node_ptr));}
+#line 2184 "c.tab.cpp"
+    break;
+
+  case 107:
+#line 554 "c.y"
+                                                                                                        {(yyval.node_ptr) = createTertiaryNode(FUNC_DEF,(yyvsp[-2].node_ptr),(yyvsp[-1].node_ptr),(yyvsp[0].node_ptr));}
+#line 2190 "c.tab.cpp"
     break;
 
 
-#line 2163 "c.tab.cpp"
+#line 2194 "c.tab.cpp"
 
       default: break;
     }
@@ -2391,13 +2422,13 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 560 "c.y"
+#line 562 "c.y"
 
 #include <stdio.h>
 
 
-NODE* createFunction(NODE* specifier, NODE* func_dec, NODE* function_body){
-	NODE* m = new NODE(FUNC_DEF, NULL, 4);
+NODE* createTertiaryNode(SYMBOL sym, NODE* specifier, NODE* func_dec, NODE* function_body){
+	NODE* m = new NODE(sym, NULL, 3);
 	*(m->children++) = *specifier;
 	*(m->children++) = *func_dec;
 	*(m->children++) = *function_body;
@@ -2556,6 +2587,8 @@ void printTree(NODE* p){
     		
     	case BLOCK:
     		cout<< "BLOCK_LIST[";
+    	case IFTHEN:
+    		if(p->symbol == IFTHEN)cout<< "IFTHEN[";    		
     	case FUNC_CALL:
     		if(p->symbol == FUNC_CALL)cout<< "FUNC_CALL[";
     	case ARGUMENTS:	

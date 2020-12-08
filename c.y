@@ -5,7 +5,7 @@
 
 using namespace std;
 
-NODE* createFunction(NODE*,NODE*,NODE*);
+NODE* createTertiaryNode(SYMBOL,NODE*,NODE*,NODE*);
 NODE* createUnaryNode(SYMBOL, NODE*);
 NODE* createBinaryNode(SYMBOL, NODE*, NODE*);
 void addChild(NODE*, NODE*);
@@ -42,7 +42,7 @@ void yyerror(const char *s);
 
 %token	ALIGNAS ALIGNOF ATOMIC GENERIC NORETURN STATIC_ASSERT THREAD_LOCAL
 
-%type <node_ptr> primary_expression constant postfix_expression unary_expression multiplicative_expression additive_expression shift_expression cast_expression relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression conditional_expression assignment_expression string expression expression_statement block_item block_item_list statement type_specifier declaration_specifiers compound_statement function_definition declarator direct_declarator parameter_type_list parameter_list parameter_declaration external_declaration translation_unit declaration init_declarator init_declarator_list initializer jump_statement argument_expression_list
+%type <node_ptr> primary_expression constant postfix_expression unary_expression multiplicative_expression additive_expression shift_expression cast_expression relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression conditional_expression assignment_expression string expression expression_statement block_item block_item_list statement type_specifier declaration_specifiers compound_statement function_definition declarator direct_declarator parameter_type_list parameter_list parameter_declaration external_declaration translation_unit declaration init_declarator init_declarator_list initializer jump_statement argument_expression_list selection_statement
 
 %start  start_unit
 %%
@@ -88,7 +88,7 @@ postfix_expression
 	: primary_expression												{$$ = $1;}
 //	| postfix_expression '[' expression ']'		
 	| postfix_expression '(' ')'										{$$ = createUnaryNode(FUNC_CALL, $1);}
-	| postfix_expression '(' argument_expression_list ')'				{$$ = createUnaryNode(FUNC_CALL, $1);addChild($$,$3);}
+	| postfix_expression '(' argument_expression_list ')'				{$$ = createUnaryNode(FUNC_CALL, $1);NODE* m = createUnaryNode(ARGUMENTS, $3);addChild($$,m);}
 //	| postfix_expression '.' IDENTIFIER
 //	| postfix_expression PTR_OP IDENTIFIER
 //	| postfix_expression INC_OP
@@ -445,6 +445,8 @@ parameter_declaration
 //	| direct_abstract_declarator '(' parameter_type_list ')'
 //	;
 
+	
+		// I changed the assignment_expression to logical_or_expression
 initializer
 //	: '{' initializer_list '}'
 //	| '{' initializer_list ',' '}'
@@ -480,7 +482,7 @@ statement
 //	: labeled_statement
 //	| compound_statement
 	: expression_statement									{$$ = $1;}
-//	| selection_statement
+	| selection_statement									{$$ = $1;}
 //	| iteration_statement
 	| jump_statement
 	;
@@ -511,11 +513,11 @@ expression_statement
 	: expression ';'											{$$ = $1;}
 	;
 
-//selection_statement
-//	: IF '(' expression ')' statement ELSE statement
-//	| IF '(' expression ')' statement
+selection_statement
+	: IF '(' expression ')' statement ELSE statement			{$$ = createTertiaryNode(IFTHEN, $3, $5, $7);}
+	| IF '(' expression ')' statement							{$$ = createBinaryNode(IFTHEN, $3, $5);}
 //	| SWITCH '(' expression ')' statement
-//	;
+	;
 
 //iteration_statement
 //	: WHILE '(' expression ')' statement
@@ -548,8 +550,8 @@ external_declaration
 	;
 
 function_definition
-//	: declaration_specifiers declarator declaration_list compound_statement		//{$$ = createFunction($1,$2,$3,$4);}			
-	: declaration_specifiers declarator compound_statement						{$$ = createFunction($1,$2,$3);}						
+//	: declaration_specifiers declarator declaration_list compound_statement		//{$$ = createTertiaryNode($1,$2,$3,$4);}			
+	: declaration_specifiers declarator compound_statement						{$$ = createTertiaryNode(FUNC_DEF,$1,$2,$3);}						
 	;
 
 //declaration_list
@@ -561,8 +563,8 @@ function_definition
 #include <stdio.h>
 
 
-NODE* createFunction(NODE* specifier, NODE* func_dec, NODE* function_body){
-	NODE* m = new NODE(FUNC_DEF, NULL, 4);
+NODE* createTertiaryNode(SYMBOL sym, NODE* specifier, NODE* func_dec, NODE* function_body){
+	NODE* m = new NODE(sym, NULL, 3);
 	*(m->children++) = *specifier;
 	*(m->children++) = *func_dec;
 	*(m->children++) = *function_body;
@@ -721,6 +723,8 @@ void printTree(NODE* p){
     		
     	case BLOCK:
     		cout<< "BLOCK_LIST[";
+    	case IFTHEN:
+    		if(p->symbol == IFTHEN)cout<< "IFTHEN[";    		
     	case FUNC_CALL:
     		if(p->symbol == FUNC_CALL)cout<< "FUNC_CALL[";
     	case ARGUMENTS:	

@@ -50,6 +50,8 @@ enum Symbol{
     CONSTT,
     ELLIPSISS,
     
+    IFTHEN,
+    
     TYPE_VOID,
     TYPE_INT,
     TYPE_SHORT,
