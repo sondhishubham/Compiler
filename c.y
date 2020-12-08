@@ -42,7 +42,7 @@ void yyerror(const char *s);
 
 %token	ALIGNAS ALIGNOF ATOMIC GENERIC NORETURN STATIC_ASSERT THREAD_LOCAL
 
-%type <node_ptr> primary_expression constant postfix_expression unary_expression multiplicative_expression additive_expression shift_expression cast_expression relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression conditional_expression assignment_expression string expression expression_statement block_item block_item_list statement type_specifier declaration_specifiers compound_statement function_definition declarator direct_declarator parameter_type_list parameter_list parameter_declaration external_declaration translation_unit declaration init_declarator init_declarator_list initializer jump_statement argument_expression_list selection_statement
+%type <node_ptr> primary_expression constant postfix_expression unary_expression multiplicative_expression additive_expression shift_expression cast_expression relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression conditional_expression assignment_expression string expression expression_statement block_item block_item_list statement type_specifier declaration_specifiers compound_statement function_definition declarator direct_declarator parameter_type_list parameter_list parameter_declaration external_declaration translation_unit declaration init_declarator init_declarator_list initializer jump_statement argument_expression_list selection_statement iteration_statement
 
 %start  start_unit
 %%
@@ -480,11 +480,11 @@ initializer
 
 statement
 //	: labeled_statement
-//	| compound_statement
-	: expression_statement									{$$ = $1;}
+	: compound_statement									{$$ = $1;}
+	| expression_statement									{$$ = $1;}
 	| selection_statement									{$$ = $1;}
-//	| iteration_statement
-	| jump_statement
+	| iteration_statement									{$$ = $1;}
+	| jump_statement										{$$ = $1;}
 	;
 
 //labeled_statement
@@ -519,14 +519,14 @@ selection_statement
 //	| SWITCH '(' expression ')' statement
 	;
 
-//iteration_statement
-//	: WHILE '(' expression ')' statement
-//	| DO statement WHILE '(' expression ')' ';'
+iteration_statement
+	: WHILE '(' expression ')' statement												{$$ = createBinaryNode(WHILEE, $3, $5);}
+	| DO statement WHILE '(' expression ')' ';'											{$$ = createBinaryNode(DOWHILE, $2, $5);}
 //	| FOR '(' expression_statement expression_statement ')' statement
 //	| FOR '(' expression_statement expression_statement expression ')' statement
 //	| FOR '(' declaration expression_statement ')' statement
 //	| FOR '(' declaration expression_statement expression ')' statement
-//	;
+	;
 
 jump_statement
 //	: GOTO IDENTIFIER ';'
@@ -724,7 +724,11 @@ void printTree(NODE* p){
     	case BLOCK:
     		cout<< "BLOCK_LIST[";
     	case IFTHEN:
-    		if(p->symbol == IFTHEN)cout<< "IFTHEN[";    		
+    		if(p->symbol == IFTHEN)cout<< "IFTHEN[";
+    	case WHILEE:
+    		if(p->symbol == WHILEE)cout<< "WHILE[";
+    	case DOWHILE:
+    		if(p->symbol == DOWHILE)cout<< "DOWHILE[";
     	case FUNC_CALL:
     		if(p->symbol == FUNC_CALL)cout<< "FUNC_CALL[";
     	case ARGUMENTS:	

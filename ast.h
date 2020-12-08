@@ -51,6 +51,8 @@ enum Symbol{
     ELLIPSISS,
     
     IFTHEN,
+    WHILEE,
+    DOWHILE,
     
     TYPE_VOID,
     TYPE_INT,
