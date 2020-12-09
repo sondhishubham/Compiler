@@ -14,6 +14,7 @@ void printTree(NODE*);
 extern "C" int yylex();
 int yyparse();
 extern "C" FILE *yyin;
+NODE* abstract_syntax_tree;
 
 void yyerror(const char *s);
 
@@ -529,15 +530,15 @@ iteration_statement
 	;
 
 jump_statement
-//	: GOTO IDENTIFIER ';'
-	: CONTINUE ';'																{$$ = new NODE(CONTINUEE, NULL, 0);}
+	: GOTO IDENTIFIER ';'														{char* val = $2;NODE* k = new NODE(IDENT,(void*)val,0);$$ = createUnaryNode(GOTOO, k);}	
+	| CONTINUE ';'																{$$ = new NODE(CONTINUEE, NULL, 0);}
 	| BREAK ';'																	{$$ = new NODE(BREAKK, NULL, 0);}
 	| RETURN ';'																{$$ = new NODE(RETURNN, NULL, 0);}
 	| RETURN expression ';'														{$$ = createUnaryNode(RETURNN, $2);}
 	;
 
 start_unit
-	:translation_unit															{printTree($1);cout<<'\n';}
+	:translation_unit															{abstract_syntax_tree = $1;}
 
 translation_unit
 	: external_declaration                                          			{$$ = $1;}
@@ -721,6 +722,7 @@ void printTree(NODE* p){
     		cout << "]]";
     		break;
     		
+    		
     	case BLOCK:
     		cout<< "BLOCK_LIST[";
     	case IFTHEN:
@@ -733,6 +735,8 @@ void printTree(NODE* p){
     		if(p->symbol == FUNC_CALL)cout<< "FUNC_CALL[";
     	case ARGUMENTS:	
     		if(p->symbol == ARGUMENTS)cout<< "ARGUMENTS[";
+    	case GOTOO:
+    		if(p->symbol == GOTOO)cout<< "GOTO[";
     	case RETURNN:
     		if(p->symbol == RETURNN)cout<< "RETURN[";
     	case POINTER:

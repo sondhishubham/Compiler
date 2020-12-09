@@ -1,11 +1,6 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <iostream>
 using namespace std;
 
 enum Symbol{
-
-	
     STRING,
     IDENT,
     INTEGER,
@@ -53,6 +48,7 @@ enum Symbol{
     IFTHEN,
     WHILEE,
     DOWHILE,
+    GOTOO,
     
     TYPE_VOID,
     TYPE_INT,

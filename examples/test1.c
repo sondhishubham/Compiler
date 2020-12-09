@@ -1,14 +1,12 @@
-int fibonacci(int a, int b, int n)
+int factorial()
 {
-	if (n <= 0)
-		return a;
-
-	while (n > 0) {
-		int t;
-		t = b;
-		b = a+b;
-		a = t;
-		n = n-1;
+	if (n)
+	{
+		a = b;
+		a;
 	}
-	return b;
+	else 
+		c;
 }
+
+

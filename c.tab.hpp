@@ -129,7 +129,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 21 "c.y"
+#line 22 "c.y"
 
     int number;
     NODE* node_ptr;
