@@ -1,1 +1,2 @@
-int a,b,c;
+int a = 10, b = a;
+

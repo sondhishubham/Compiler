@@ -2,6 +2,7 @@
 #include <iostream>
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
 #include "ast.h"
 #include "symbol_table.h"
 #include "c.tab.hpp"
@@ -14,7 +15,7 @@ extern NODE* abstract_syntax_tree;
 extern void printTree(NODE*);
 int check_semantics(NODE*);
 int addDeclaration(NODE*);
-binding* get_binding(char*);
+int doesExist(char*);
 bool isPreviouslyDeclared(char*);
 void enterScope();
 void exitScope();
@@ -46,20 +47,24 @@ main(int argc, char **argv)
   assert(yyin);
   int ret = yyparse();
   initialize_stack();
-  check_semantics(abstract_syntax_tree);
+  int ans = check_semantics(abstract_syntax_tree);
   printStack();
-  printf("retv = %d\n", ret);
+  printf("retv = %d\n", ans);
   exit(0);
 }
 
 
 int check_semantics(NODE* ptr){
-	if(ptr->symbol == DECLARATION){
-		addDeclaration(ptr);
-	}
+	int answer;
+	if(ptr->symbol == IDENT)
+		return doesExist((char*)ptr->value);
+	else if(ptr->symbol == INTEGER||ptr->symbol == STRING)
+		return 0;
+	else if(ptr->symbol == DECLARATION)
+		return addDeclaration(ptr);
 	else{
 		while(ptr->bp != ptr->children){
-			check_semantics(ptr->bp++);
+			if (check_semantics(ptr->bp++) == -1) return -1;
 		}
 	}
 	return 0;
@@ -98,20 +103,26 @@ int addDeclaration(NODE* ptr){
     		break;    		
 	}
 	while(declaration_list.bp != declaration_list.children){
-		if((declaration_list.bp)->symbol == INITIALIZE){
-			cout << "Nothing"<<endl;
+		NODE* ident;
+		if((declaration_list.bp)->symbol == INITIALIZE){ //check if the initializer part is correct or not, a = 10, 10 is correct or not
+			NODE* k = declaration_list.bp;
+			NODE* declarator  = k->bp++;
+			NODE* initializer = k->bp++;
+			if (check_semantics(initializer) == -1)	return -1;
+			
+			ident = declarator;
 		}
-		else{//In case when there is simple declaration like int b,v,d; No initializing and no function declaraions
-			NODE* ident = declaration_list.bp;
-			char* identifier_name = (char*)ident->value;
-			if(isPreviouslyDeclared(identifier_name)){
-				return -1;
-			}
-			binding* entry = new binding(identifier_name, t, NULL, 0, t);
-			if(symbol_table-bp == sizeAssigned)
-				increaseStackSize();
-			*(symbol_table++) = *entry;
+		//In case when there is simple declaration like int b,v,d; No initializing and no function declaraions
+		else
+			ident = declaration_list.bp;
+		char* identifier_name = (char*)ident->value;
+		if(isPreviouslyDeclared(identifier_name)){
+			return -1;
 		}
+		binding* entry = new binding(identifier_name, t, NULL, 0, t);
+		if(symbol_table-bp == sizeAssigned)
+			increaseStackSize();
+		*(symbol_table++) = *entry;
 		declaration_list.bp++;
 	}
 	return 0;
@@ -159,24 +170,22 @@ void increaseStackSize(){
 	return;
 }
 
-binding* get_binding(char* k){
+int doesExist(char* k){
 	binding* curr_ptr = symbol_table - 1;
 	while(curr_ptr != bp){
-		if(k == curr_ptr->identifier)
-			return curr_ptr;
+		if(strcmp(k,curr_ptr->identifier)==0)
+			return 0;
 		curr_ptr--;
 	}
-	cout << k << " has not been declared yet";
-	return NULL;
+	cout << k << " has not been declared yet" << '\n';
+	return -1;
 }
 
 bool isPreviouslyDeclared(char* k){
 //	cout << " I " <<endl;
 	binding* curr_ptr = symbol_table - 1;
 	while(curr_ptr->type != Block){
-		if(k == curr_ptr->identifier){
-			cout << k<<endl;
-			cout << curr_ptr->identifier <<endl;
+		if(strcmp(k,curr_ptr->identifier)==0){
 			cout << k << " was already declared"<<'\n';
 			return true;
 			}
