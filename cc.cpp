@@ -51,15 +51,17 @@ main(int argc, char **argv)
 //  printTree(abstract_syntax_tree);
   int ans = check_semantics(abstract_syntax_tree);
   printStack();
-  printf("retv = %d\n", ans);
+  printf("retv = %d\n", ret);
   exit(0);
 }
 
 
 int check_semantics(NODE* ptr){
 	int answer;
-	if(ptr->symbol == IDENT)
-		return doesExist((char*)ptr->value, Variable);//Do something about variable here
+	if(ptr->symbol == IDENT){
+		answer =  doesExist((char*)ptr->value, Variable);//Do something about variable here
+		return answer;
+		}
 	else if(ptr->symbol == INTEGER||ptr->symbol == STRING)
 		return 0;
 	else if(ptr->symbol == DECLARATION)
@@ -69,14 +71,16 @@ int check_semantics(NODE* ptr){
 	else if(ptr->symbol == BLOCK){
 		enterScope();
 		while(ptr->bp != ptr->children){
-			if(check_semantics(ptr->bp++)==-1) return -1;
+			if(check_semantics(ptr->bp)==-1) return -1;
+			ptr->bp++;
 		}
 		exitScope();
 		return 0;
 	}
 	else{
 		while(ptr->bp != ptr->children){
-			if (check_semantics(ptr->bp++) == -1) return -1;
+			if (check_semantics(ptr->bp) == -1) return -1;
+			ptr->bp++;
 		}
 	}
 	return 0;
@@ -104,6 +108,7 @@ int addFunction(NODE* ptr){
 	if(symbol_table-bp == sizeAssigned)
 		increaseStackSize();
 	*(symbol_table++) = *entry;
+	numEntries++;
 	
 	enterScope();
 //	if(parameters->symbol == PARAMETERS) cout << "PARAMETER
@@ -124,12 +129,14 @@ int addFunction(NODE* ptr){
 				if(symbol_table - bp == sizeAssigned)
 					increaseStackSize();
 				*(symbol_table++) = *en;
+				numEntries++;
 			}
 			else if(parameters->bp->symbol == ELLIPSISS){
 				binding* en = new binding("Ellipsis", Variable, 0);
 				if(symbol_table - bp == sizeAssigned)
 					increaseStackSize();
 				*(symbol_table++) = *en;
+				numEntries++;
 			}
 			parameters->bp++;
 		}
@@ -137,6 +144,7 @@ int addFunction(NODE* ptr){
 	while(function_body->bp != function_body->children){
 		if(check_semantics(function_body->bp++) == -1) return -1;
 	}
+	exitScope();
 	return 0;
 }
 
@@ -184,6 +192,7 @@ int addDeclaration(NODE* ptr){
 		if(symbol_table-bp == sizeAssigned)
 			increaseStackSize();
 		*(symbol_table++) = *entry;
+		numEntries++;
 		declaration_list.bp++;
 	}
 	return 0;
@@ -191,6 +200,7 @@ int addDeclaration(NODE* ptr){
 
 void initialize_stack(){
 	symbol_table = (binding*) malloc(sizeAssigned*sizeof(binding));
+	cout << "The value of symbol_table is"<<symbol_table<<endl;
 	bp = symbol_table;
 	binding* entry = new binding(NULL, Block, 0);
 	*(symbol_table++) = *entry;
@@ -233,7 +243,14 @@ void increaseStackSize(){
 
 int doesExist(char* k, SYMBOL_TYPE t){
 	binding* curr_ptr = symbol_table - 1;
+//	cout << endl;
+//	cout << "The value of bp is "<< bp<<endl;
 	while(curr_ptr != bp){
+		if(curr_ptr->type == Block){
+			curr_ptr--;
+			continue;
+		}
+//		cout << "The value of curr_ptr is "<<curr_ptr<<endl;
 		if(strcmp(k,curr_ptr->identifier)==0)
 			return 0;
 		curr_ptr--;
