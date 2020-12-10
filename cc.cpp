@@ -59,6 +59,7 @@ main(int argc, char **argv)
 int check_semantics(NODE* ptr){
 	int answer;
 	if(ptr->symbol == IDENT){
+		cout << (char*) ptr->value<<endl;
 		answer =  doesExist((char*)ptr->value, Variable);//Do something about variable here
 		return answer;
 		}
@@ -200,7 +201,6 @@ int addDeclaration(NODE* ptr){
 
 void initialize_stack(){
 	symbol_table = (binding*) malloc(sizeAssigned*sizeof(binding));
-	cout << "The value of symbol_table is"<<symbol_table<<endl;
 	bp = symbol_table;
 	binding* entry = new binding(NULL, Block, 0);
 	*(symbol_table++) = *entry;

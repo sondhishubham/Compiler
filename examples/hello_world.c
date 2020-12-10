@@ -1,11 +1,11 @@
-int factorial(int n)
+int factorial(int nan)
 {
-	if (n <= 0)
+	if (nan <= 0)
 		return 1;
-	else return n*factorial(n-1);
+	else return nan*factorial(nan-1);
 }
 
-int fibonacci(int aaaa, int b, int n)
+int fibonacci(int a, int b, int n)
 {
 	if (n <= 0)
 		return a;
@@ -18,7 +18,6 @@ int fibonacci(int aaaa, int b, int n)
 		n = n-1;
 	}
 	return b;
-	int aaaa;
 }
 
 int main()
