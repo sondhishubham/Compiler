@@ -15,7 +15,7 @@ extern NODE* abstract_syntax_tree;
 extern void printTree(NODE*);
 int check_semantics(NODE*);
 int addDeclaration(NODE*);
-int doesExist(char*);
+int doesExist(char*, SYMBOL_TYPE);
 bool isPreviouslyDeclared(char*);
 void enterScope();
 void exitScope();
@@ -57,7 +57,7 @@ main(int argc, char **argv)
 int check_semantics(NODE* ptr){
 	int answer;
 	if(ptr->symbol == IDENT)
-		return doesExist((char*)ptr->value);
+		return doesExist((char*)ptr->value, Variable);//Do something about variable here
 	else if(ptr->symbol == INTEGER||ptr->symbol == STRING)
 		return 0;
 	else if(ptr->symbol == DECLARATION)
@@ -97,8 +97,14 @@ int addDeclaration(NODE* ptr){
 			ident = declaration_list.bp;
 		while (ident->symbol == POINTER) ident = ident->bp;			// To take care of pointers while declaraion
 		char* identifier_name = (char*)ident->value;
-		if(isPreviouslyDeclared(identifier_name)){
+		if(t==Variable && isPreviouslyDeclared(identifier_name)){
 			return -1;
+		}
+		if(t==Function){
+			int exists = doesExist(identifier_name, Function);
+			if(exists == 0){
+				declaration_list.bp++; continue;
+			}
 		}
 		binding* entry = new binding(identifier_name, t, 0);
 		if(symbol_table-bp == sizeAssigned)
@@ -151,14 +157,14 @@ void increaseStackSize(){
 	return;
 }
 
-int doesExist(char* k){
+int doesExist(char* k, SYMBOL_TYPE t){
 	binding* curr_ptr = symbol_table - 1;
 	while(curr_ptr != bp){
 		if(strcmp(k,curr_ptr->identifier)==0)
 			return 0;
 		curr_ptr--;
 	}
-	cout << k << " has not been declared yet" << '\n';
+	if(t == Variable) cout << k << " has not been declared yet" << '\n';
 	return -1;
 }
 
