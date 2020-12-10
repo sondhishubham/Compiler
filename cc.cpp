@@ -53,7 +53,7 @@ main(int argc, char **argv)
  	exitScope();
  	free(bp);
   	printStack();
-  	printf("retv = %d\n", ret);
+  	printf("retv = %d\n", ans);
   }
   exit(0);
 }
