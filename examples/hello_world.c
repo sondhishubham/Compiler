@@ -1,4 +1,4 @@
-int a = 10;
-int b,l,m;
-int printf();
-int printf();
+
+int printf(int a, int k, int n()){
+	int m = a, l =m;
+}

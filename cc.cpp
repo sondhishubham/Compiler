@@ -15,6 +15,7 @@ extern NODE* abstract_syntax_tree;
 extern void printTree(NODE*);
 int check_semantics(NODE*);
 int addDeclaration(NODE*);
+int addFunction(NODE*);
 int doesExist(char*, SYMBOL_TYPE);
 bool isPreviouslyDeclared(char*);
 void enterScope();
@@ -47,6 +48,7 @@ main(int argc, char **argv)
   assert(yyin);
   int ret = yyparse();
   initialize_stack();
+//  printTree(abstract_syntax_tree);
   int ans = check_semantics(abstract_syntax_tree);
   printStack();
   printf("retv = %d\n", ans);
@@ -62,10 +64,78 @@ int check_semantics(NODE* ptr){
 		return 0;
 	else if(ptr->symbol == DECLARATION)
 		return addDeclaration(ptr);
+	else if(ptr->symbol == FUNC_DEF)
+		return addFunction(ptr);
+	else if(ptr->symbol == BLOCK){
+		enterScope();
+		while(ptr->bp != ptr->children){
+			if(check_semantics(ptr->bp++)==-1) return -1;
+		}
+		exitScope();
+		return 0;
+	}
 	else{
 		while(ptr->bp != ptr->children){
 			if (check_semantics(ptr->bp++) == -1) return -1;
 		}
+	}
+	return 0;
+}
+
+
+
+int addFunction(NODE* ptr){
+	ptr->bp++;
+	NODE* ident				= (ptr->bp++);
+	NODE* function_body 	= (ptr->bp++);
+	while (ident->symbol == POINTER) ident = ident->bp;								// To take care of pointers while declaraion
+	if(ident->symbol != FUNC_DECLARATOR){
+		cout<<"Variable defined as a function"<<endl;
+		return -1;
+	}
+	NODE* name 				= (ident->bp++);
+	if(name->symbol == FUNC_DECLARATOR){
+		cout<<"Function returning a function"<<endl;
+		return -1;
+	}
+	NODE* parameters		= (ident->bp == ident->children)?(NULL):(ident->bp++);	//NULL means no parameters
+	char* identifier_name 	= (char*)name->value;
+	binding* entry = new binding(identifier_name, Function, 0);
+	if(symbol_table-bp == sizeAssigned)
+		increaseStackSize();
+	*(symbol_table++) = *entry;
+	
+	enterScope();
+//	if(parameters->symbol == PARAMETERS) cout << "PARAMETER
+	if (parameters!=NULL){
+		while(parameters->bp != parameters->children){
+			if(parameters->bp->symbol != ELLIPSISS){
+				NODE* declaration = parameters->bp;
+				declaration->bp++;
+				NODE* variable = declaration->bp++;
+				while(variable->symbol == POINTER) variable = variable->bp;			//To take care of pointer
+				if(variable->symbol == FUNC_DECLARATOR){
+					cout << "Function given as an argument to a fucntion" << endl;
+					return -1;
+				}
+				char* identifier_name = (char*)variable->value;
+				if(isPreviouslyDeclared(identifier_name)) return -1;
+				binding* en = new binding(identifier_name, Variable, 0);
+				if(symbol_table - bp == sizeAssigned)
+					increaseStackSize();
+				*(symbol_table++) = *en;
+			}
+			else if(parameters->bp->symbol == ELLIPSISS){
+				binding* en = new binding("Ellipsis", Variable, 0);
+				if(symbol_table - bp == sizeAssigned)
+					increaseStackSize();
+				*(symbol_table++) = *en;
+			}
+			parameters->bp++;
+		}
+	}
+	while(function_body->bp != function_body->children){
+		if(check_semantics(function_body->bp++) == -1) return -1;
 	}
 	return 0;
 }
@@ -92,6 +162,10 @@ int addDeclaration(NODE* ptr){
 			t = Function;
 			NODE* k = declaration_list.bp;
 			ident = k->bp++;
+			if(ident->symbol == FUNC_DECLARATOR){
+				cout << "Declaration of a function returning a function" <<endl;
+				return -1;
+			}
 		}
 		else     													//In case when there is simple declaration like int b,v,d; No initializing and no function declaraions
 			ident = declaration_list.bp;

@@ -361,7 +361,7 @@ declarator
 
 direct_declarator
 	: IDENTIFIER															{char* val = $1;$$= new NODE(IDENT,(void*)val,0);}													
-	| '(' declarator ')'													{$$ = $2;}
+//	| '(' declarator ')'													{$$ = $2;}
 //	| direct_declarator '[' ']'			
 //	| direct_declarator '[' '*' ']'
 //	| direct_declarator '[' STATIC type_qualifier_list assignment_expression ']'
@@ -403,7 +403,7 @@ parameter_list
 parameter_declaration
 	: declaration_specifiers declarator						{NODE* m = createBinaryNode(DECLARATION, $1, $2); $$ = createUnaryNode(PARAMETERS,m);}
 //	| declaration_specifiers abstract_declarator
-	| declaration_specifiers								{$$ = createUnaryNode(PARAMETERS, $1);}
+//	| declaration_specifiers								{$$ = createUnaryNode(PARAMETERS, $1);}
 	;
 
 //identifier_list
