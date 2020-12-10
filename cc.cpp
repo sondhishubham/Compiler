@@ -76,32 +76,8 @@ int addDeclaration(NODE* ptr){
 	SYMBOL_TYPE t;
 	int numDeclarations = declaration_list.children - declaration_list.bp;
 	if(declaration_specifiers.symbol == CONSTT) declaration_specifiers = *(declaration_specifiers.bp);
-	switch(declaration_specifiers.symbol){
-		case TYPE_VOID:
-			t = Void;
-			break;
-    	case TYPE_INT:
-    		t = Integer;
-    		break;
-    	case TYPE_SHORT:
-    		t = Short;
-    		break;
-    	case TYPE_LONG:
-    		t = Long;
-    		break;
-    	case TYPE_DOUBLE:
-    		t = Double;
-    		break;
-    	case TYPE_BOOL:
-    		t = Bool;
-    		break;
-    	case TYPE_CHAR:
-    		t = Charater;
-    		break;
-    	case TYPE_FLOAT:
-    		t = Float;
-    		break;    		
-	}
+	SYMBOL s = declaration_specifiers.symbol;
+	t = (s==FUNC_CALL)?(Function):(Variable);
 	while(declaration_list.bp != declaration_list.children){
 		NODE* ident;
 		if((declaration_list.bp)->symbol == INITIALIZE){ //check if the initializer part is correct or not, a = 10, 10 is correct or not
@@ -109,17 +85,17 @@ int addDeclaration(NODE* ptr){
 			NODE* declarator  = k->bp++;
 			NODE* initializer = k->bp++;
 			if (check_semantics(initializer) == -1)	return -1;
-			
 			ident = declarator;
 		}
 		//In case when there is simple declaration like int b,v,d; No initializing and no function declaraions
 		else
 			ident = declaration_list.bp;
+		while (ident->symbol == POINTER) ident = ident->bp;// To take care of pointers while declaraion
 		char* identifier_name = (char*)ident->value;
 		if(isPreviouslyDeclared(identifier_name)){
 			return -1;
 		}
-		binding* entry = new binding(identifier_name, t, NULL, 0, t);
+		binding* entry = new binding(identifier_name, t, 0);
 		if(symbol_table-bp == sizeAssigned)
 			increaseStackSize();
 		*(symbol_table++) = *entry;
@@ -131,7 +107,7 @@ int addDeclaration(NODE* ptr){
 void initialize_stack(){
 	symbol_table = (binding*) malloc(sizeAssigned*sizeof(binding));
 	bp = symbol_table;
-	binding* entry = new binding(NULL, Block, NULL, 0, Block);
+	binding* entry = new binding(NULL, Block, 0);
 	*(symbol_table++) = *entry;
 	numEntries = 1;
 	return;
@@ -140,7 +116,7 @@ void initialize_stack(){
 void enterScope(){
 	if(symbol_table-bp == sizeAssigned)
 		increaseStackSize();
-	binding* entry = new binding(NULL, Block, NULL, numEntries, Block); // The integer numArguments contain the number of entries between current address and last scope.
+	binding* entry = new binding(NULL, Block, numEntries); // The integer numArguments contain the number of entries between current address and last scope.
 	*(symbol_table++) = *entry;
 	numEntries = 1;
 	return;
@@ -148,7 +124,7 @@ void enterScope(){
 
 void exitScope(){
 	symbol_table -= numEntries;
-	numEntries = symbol_table->nArguments;
+	numEntries = symbol_table->scope_size;
 }
 
 
@@ -201,35 +177,11 @@ void printStack(){
 void printEntry(binding b){
 
 switch(b.type){
-	case Void:
-		cout << "Void("<<*b.identifier<<")|";
-		break;
-	case Short:
-		cout << "Short("<<*b.identifier<<")|";
-		break;
-	case Long:
-		cout << "Long("<<*b.identifier<<")|";
-		break;
-	case Float:
-		cout << "Float("<<*b.identifier<<")|";
-		break;
-	case Integer:
-		cout << "Integer("<<*b.identifier<<")|";	
-		break;
-	case Bool:
-		cout << "Bool("<<*b.identifier<<")|";
-		break;
-	case Double:
-		cout << "Double("<<*b.identifier<<")|";
-		break;
-	case Charater:
-		cout << "Charater("<<*b.identifier<<")|";
+	case Variable:
+		cout << "Variable("<<*b.identifier<<")|";
 		break;
 	case Function:
 		cout << "Function("<<*b.identifier<<")|";
-		break;
-	case Pointer:
-		cout << "Pointer("<<*b.identifier<<")|";
 		break;
 	case Block:
 		cout << "Block|";
