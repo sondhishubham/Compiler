@@ -73,24 +73,29 @@ int check_semantics(NODE* ptr){
 int addDeclaration(NODE* ptr){
 	NODE declaration_specifiers = *(ptr->bp++);
 	NODE declaration_list = *(ptr->bp++);
-	SYMBOL_TYPE t;
+	SYMBOL_TYPE t = Variable;
 	int numDeclarations = declaration_list.children - declaration_list.bp;
-	if(declaration_specifiers.symbol == CONSTT) declaration_specifiers = *(declaration_specifiers.bp);
-	SYMBOL s = declaration_specifiers.symbol;
-	t = (s==FUNC_CALL)?(Function):(Variable);
+	
 	while(declaration_list.bp != declaration_list.children){
 		NODE* ident;
-		if((declaration_list.bp)->symbol == INITIALIZE){ //check if the initializer part is correct or not, a = 10, 10 is correct or not
+		if((declaration_list.bp)->symbol == INITIALIZE){ 			//check if the initializer part is correct or not, a = 10, 10 is correct or not
 			NODE* k = declaration_list.bp;
-			NODE* declarator  = k->bp++;
+			ident  = k->bp++;
 			NODE* initializer = k->bp++;
+			if (ident->symbol == FUNC_DECLARATOR){ 
+				cout << "Function is declared as a variable"<<'\n';
+				return -1;
+			}
 			if (check_semantics(initializer) == -1)	return -1;
-			ident = declarator;
 		}
-		//In case when there is simple declaration like int b,v,d; No initializing and no function declaraions
-		else
+		else if((declaration_list.bp)->symbol == FUNC_DECLARATOR){	//In the case of declaration of fucntion like "void printf();"
+			t = Function;
+			NODE* k = declaration_list.bp;
+			ident = k->bp++;
+		}
+		else     													//In case when there is simple declaration like int b,v,d; No initializing and no function declaraions
 			ident = declaration_list.bp;
-		while (ident->symbol == POINTER) ident = ident->bp;// To take care of pointers while declaraion
+		while (ident->symbol == POINTER) ident = ident->bp;			// To take care of pointers while declaraion
 		char* identifier_name = (char*)ident->value;
 		if(isPreviouslyDeclared(identifier_name)){
 			return -1;
