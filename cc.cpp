@@ -47,11 +47,14 @@ main(int argc, char **argv)
   yyin = fopen(filename, "r");
   assert(yyin);
   int ret = yyparse();
-  initialize_stack();
-//  printTree(abstract_syntax_tree);
-  int ans = check_semantics(abstract_syntax_tree);
-  printStack();
-  printf("retv = %d\n", ret);
+  if(ret == 0){
+  	initialize_stack();
+   	int ans = check_semantics(abstract_syntax_tree);
+ 	exitScope();
+ 	free(bp);
+  	printStack();
+  	printf("retv = %d\n", ret);
+  }
   exit(0);
 }
 
@@ -59,7 +62,7 @@ main(int argc, char **argv)
 int check_semantics(NODE* ptr){
 	int answer;
 	if(ptr->symbol == IDENT){
-		cout << (char*) ptr->value<<endl;
+//		cout << (char*) ptr->value<<endl;
 		answer =  doesExist((char*)ptr->value, Variable);//Do something about variable here
 		return answer;
 		}
@@ -280,10 +283,10 @@ void printEntry(binding b){
 
 switch(b.type){
 	case Variable:
-		cout << "Variable("<<*b.identifier<<")|";
+		cout << "Variable("<<b.identifier<<")|";
 		break;
 	case Function:
-		cout << "Function("<<*b.identifier<<")|";
+		cout << "Function("<<b.identifier<<")|";
 		break;
 	case Block:
 		cout << "Block|";

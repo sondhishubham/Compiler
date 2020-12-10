@@ -18,6 +18,7 @@ int fibonacci(int a, int b, int n)
 		n = n-1;
 	}
 	return b;
+	int m = factorial(b);
 }
 
 int main()
