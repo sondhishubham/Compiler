@@ -1,1 +1,1 @@
-const int k = 10;	
+const int *k, l = 10;

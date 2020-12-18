@@ -86,6 +86,8 @@ void cgen(NODE* p, bool global){	// If global = 1, it is an external declaration
 
 
 void printDeclaration(NODE* p, bool global){
+	bool isInitiazlizer = false;
+	bool isFunc = false;
 	string isConstant = "global";
 	p->bp = p->const_bp;
 	NODE* declaration_specifiers  	= p->bp++;
@@ -94,16 +96,16 @@ void printDeclaration(NODE* p, bool global){
 		isConstant = "constant";										//Its const in case of gloval vairables if variable is const otherwise its global.
 		declaration_specifiers = declaration_specifiers->const_bp;
 	}
-	string type, align, pointer, initializer, identifier;
+	string type = "", align = "", specific_align = "", pointer = "", initializer = "", identifier = "", parameters = "";
 	switch(declaration_specifiers->symbol){
 		case TYPE_INT:
-			type = " i32"; align = ", align 4";
+			type = " i32"; align = ", align 4"; specific_align = align;
 			break;
 		case TYPE_CHAR:
-			type = " i8"; align = ", align 1";
+			type = " i8"; align = ", align 1"; specific_align = align;
 			break;
 		case TYPE_BOOL:
-			type = " i8"; align = ", align 1";
+			type = " i8"; align = ", align 1"; specific_align = align;
 			break;
 	}
 	declaration_list->bp = declaration_list->const_bp;
@@ -112,6 +114,7 @@ void printDeclaration(NODE* p, bool global){
 		NODE* k = declaration_list->bp;
 		k->bp = k->const_bp;
 		if(k->symbol == INITIALIZE){
+			isInitiazlizer = true;
 			ident = k->bp++; ident->bp = ident->const_bp;
 			NODE* val = k->bp++; val->bp = val->const_bp; 
 			if(global){
@@ -123,26 +126,124 @@ void printDeclaration(NODE* p, bool global){
 				}
 			}
 		}
-//		else if(k->symbol == FUNC_DEF){
-//			ident = k->bp++; ident->bp = ident->const_bp;
-//			if(k->bp == k->children){
-//				
-//			}
-//		}
+		else if(k->symbol == FUNC_DECLARATOR){
+			isFunc = true;
+			ident = k->bp++; ident->bp = ident->const_bp;
+			if(k->bp == k->children){
+				parameters = "()";
+			}
+			else{
+				parameters = "(";
+				NODE* par = k->bp++;
+				par->bp = par->const_bp;
+				while(par->bp != par->children){
+					if(par->bp != par->const_bp) parameters = parameters + ",";
+					string par_type = "", par_pointer = "";
+					NODE* curr_par = par->bp; curr_par = curr_par->const_bp;
+					if(curr_par->symbol == DECLARATION){
+						NODE* declaration_specifier = curr_par->bp++; declaration_specifier->bp = declaration_specifier->const_bp;
+						NODE* declarator = curr_par->bp++; declarator->bp = declarator->const_bp;
+						while(declaration_specifier->symbol == CONSTT){
+							declaration_specifier = declaration_specifier->const_bp;
+						}
+						switch(declaration_specifiers->symbol){
+							case TYPE_INT:
+								par_type = " i32";
+								break;
+							case TYPE_CHAR:
+								par_type = " i8";
+								break;
+							case TYPE_BOOL:
+								par_type = " i8";
+								break;
+						}
+						while(declarator->symbol == POINTER){
+							declarator = declarator->bp;
+							par_pointer = par_pointer + "*";
+						}
+						if(declarator->symbol == FUNC_DECLARATOR){
+							cout << "Fucntion declared with a function as one of its parameters\n";
+							exit(0);
+						}
+						parameters = parameters + par_type + par_pointer;
+					}
+					par->bp++;
+				}
+				parameters = parameters + ")";
+			}
+		}
 		else{
 			ident = declaration_list->bp;
 			initializer = "0";
 		}
 		while(ident->symbol==POINTER){		//In case of pointer
+			specific_align = ", align 8";
 			pointer = pointer+'*';
 			ident=ident->const_bp;
-			initializer = "null";
+			if(!isInitiazlizer) initializer = "null";
 		}
-		identifier = (char*)ident->value; identifier = identifier + " ";
+		if(ident->symbol == FUNC_DECLARATOR){
+			isFunc = true;
+			ident = k->bp++; ident->bp = ident->const_bp;
+			if(k->bp == k->children){
+				parameters = "()";
+			}
+			else{
+				parameters = "(";
+				NODE* par = k->bp++;
+				par->bp = par->const_bp;
+				while(par->bp != par->children){
+					if(par->bp != par->const_bp) parameters = parameters + ",";
+					string par_type = "", par_pointer = "";
+					NODE* curr_par = par->bp; curr_par = curr_par->const_bp;
+					if(curr_par->symbol == DECLARATION){
+						NODE* declaration_specifier = curr_par->bp++; declaration_specifier->bp = declaration_specifier->const_bp;
+						NODE* declarator = curr_par->bp++; declarator->bp = declarator->const_bp;
+						while(declaration_specifier->symbol == CONSTT){
+							declaration_specifier = declaration_specifier->const_bp;
+						}
+						switch(declaration_specifiers->symbol){
+							case TYPE_INT:
+								par_type = " i32";
+								break;
+							case TYPE_CHAR:
+								par_type = " i8";
+								break;
+							case TYPE_BOOL:
+								par_type = " i8";
+								break;
+						}
+						while(declarator->symbol == POINTER){
+							declarator = declarator->bp;
+							par_pointer = par_pointer + "*";
+						}
+						if(declarator->symbol == FUNC_DECLARATOR){
+							cout << "Fucntion declared with a function as one of its parameters\n";
+							exit(0);
+						}
+						parameters = parameters + par_type + par_pointer;
+					}
+					par->bp++;
+				}
+				parameters = parameters + ")";
+			}
+		}
+		identifier = (char*)ident->value;
 		if(global){
-		cc << "@"+identifier+"= "+isConstant+type+pointer+" "+initializer+align+"\n";
+		if(isFunc)
+			cc << "declare"+ type + pointer + "@"+identifier+parameters + "\n";
+		else
+			cc << "@"+identifier+" = "+isConstant+type+pointer+" "+initializer+specific_align+"\n";
 		}
 		declaration_list->bp++;
+		pointer = "";
+		initializer = "";
+		parameters = "";
+		identifier = "";
+		specific_align = align;
+		initializer = "";
+		isInitiazlizer = false;
+		isFunc = false;
 	}
 	return;
 }
@@ -280,12 +381,12 @@ int addDeclaration(NODE* ptr){
 	NODE declaration_list = *(ptr->bp++);
 	SYMBOL_TYPE t = Variable;
 	int numDeclarations = declaration_list.children - declaration_list.bp;
-	
 	while(declaration_list.bp != declaration_list.children){
 		NODE* ident;
 		if((declaration_list.bp)->symbol == INITIALIZE){ 			//check if the initializer part is correct or not, a = 10, 10 is correct or not
 			NODE* k = declaration_list.bp;
 			ident  = k->bp++;
+			while(ident->symbol == POINTER) ident = ident->bp;
 			NODE* initializer = k->bp++;
 			if (ident->symbol == FUNC_DECLARATOR){ 
 				cout << "Function is declared as a variable"<<'\n';
@@ -295,7 +396,7 @@ int addDeclaration(NODE* ptr){
 		}
 		else if((declaration_list.bp)->symbol == FUNC_DECLARATOR){	//In the case of declaration of fucntion like "void printf();"
 			t = Function;
-			NODE* k = declaration_list.bp;
+			NODE* k = declaration_list.bp;// k is the FUNC_DECLARATOR
 			ident = k->bp++;
 			if(ident->symbol == FUNC_DECLARATOR){
 				cout << "Declaration of a function returning a function" <<endl;
@@ -304,7 +405,17 @@ int addDeclaration(NODE* ptr){
 		}
 		else     													//In case when there is simple declaration like int b,v,d; No initializing and no function declaraions
 			ident = declaration_list.bp;
-		while (ident->symbol == POINTER) ident = ident->bp;			// To take care of pointers while declaraion
+		while (ident->symbol == POINTER){
+			ident = ident->bp;			// To take care of pointers while declaraion
+		}
+		if(ident->symbol == FUNC_DECLARATOR){
+			t = Function;
+			ident = ident->bp;
+			if(ident->symbol == FUNC_DECLARATOR){
+				cout << "Declaration of a function returning a function" <<endl;
+				return -1;
+			}
+		}
 		char* identifier_name = (char*)ident->value;
 		if(t==Variable && isPreviouslyDeclared(identifier_name)){
 			return -1;
