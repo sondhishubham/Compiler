@@ -6,6 +6,7 @@
 #include "ast.h"
 #include "symbol_table.h"
 #include "c.tab.hpp"
+#include <fstream>
 using namespace std;
 
 extern "C" int yylex();
@@ -27,9 +28,13 @@ binding* bp;			// entries start from (bp+1), First entry is block;
 int numEntries;
 void initialize_stack();
 void increaseStackSize();
-
 void printStack();
 void printEntry(binding);
+
+
+void printDeclaration(NODE*, bool);
+void cgen(NODE*, bool);
+ofstream cc;
 
 static void usage()
 {
@@ -47,22 +52,140 @@ main(int argc, char **argv)
   yyin = fopen(filename, "r");
   assert(yyin);
   int ret = yyparse();
+//  printTree(abstract_syntax_tree); cout << '\n';
   if(ret == 0){
   	initialize_stack();
    	int ans = check_semantics(abstract_syntax_tree);
  	exitScope();
  	free(bp);
-  	printStack();
   	printf("retv = %d\n", ans);
+  	cc.open("cc.ll");
+  	cgen(abstract_syntax_tree, true);
+  	exit(0);
   }
+  printf("retv = %d\n", ret);
   exit(0);
 }
 
 
+
+
+void cgen(NODE* p, bool global){	// If global = 1, it is an external declaration.
+	if(p->symbol == DECLARATION){
+		printDeclaration(p,global);
+		return;
+	}
+	else{
+		p->bp = p->const_bp;
+		while(p->bp!=p->children){
+			cgen(p->bp++,global);
+		}
+		return;
+	}
+}
+
+
+void printDeclaration(NODE* p, bool global){
+	string isConstant = "global";
+	p->bp = p->const_bp;
+	NODE* declaration_specifiers  	= p->bp++;
+	NODE* declaration_list			= p->bp++;
+	if (declaration_specifiers->symbol == CONSTT){
+		isConstant = "constant";										//Its const in case of gloval vairables if variable is const otherwise its global.
+		declaration_specifiers = declaration_specifiers->const_bp;
+	}
+	string type, align, pointer, initializer, identifier;
+	switch(declaration_specifiers->symbol){
+		case TYPE_INT:
+			type = " i32"; align = ", align 4";
+			break;
+		case TYPE_CHAR:
+			type = " i8"; align = ", align 1";
+			break;
+		case TYPE_BOOL:
+			type = " i8"; align = ", align 1";
+			break;
+	}
+	declaration_list->bp = declaration_list->const_bp;
+	while(declaration_list->bp != declaration_list->children){
+		NODE* ident;
+		NODE* k = declaration_list->bp;
+		k->bp = k->const_bp;
+		if(k->symbol == INITIALIZE){
+			ident = k->bp++; ident->bp = ident->const_bp;
+			NODE* val = k->bp++; val->bp = val->const_bp; 
+			if(global){
+				if (val->symbol == INTEGER)
+					initializer = to_string(*((int*)val->value));
+				else{
+					cout << "Only constants can be given as initializer in external declarations"<<endl;
+					exit(0);
+				}
+			}
+		}
+//		else if(k->symbol == FUNC_DEF){
+//			ident = k->bp++; ident->bp = ident->const_bp;
+//			if(k->bp == k->children){
+//				
+//			}
+//		}
+		else{
+			ident = declaration_list->bp;
+			initializer = "0";
+		}
+		while(ident->symbol==POINTER){		//In case of pointer
+			pointer = pointer+'*';
+			ident=ident->const_bp;
+			initializer = "null";
+		}
+		identifier = (char*)ident->value; identifier = identifier + " ";
+		if(global){
+		cc << "@"+identifier+"= "+isConstant+type+pointer+" "+initializer+align+"\n";
+		}
+		declaration_list->bp++;
+	}
+	return;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 int check_semantics(NODE* ptr){
 	int answer;
+	if(ptr == NULL) return 0;
 	if(ptr->symbol == IDENT){
-//		cout << (char*) ptr->value<<endl;
 		answer =  doesExist((char*)ptr->value, Variable);//Do something about variable here
 		return answer;
 		}

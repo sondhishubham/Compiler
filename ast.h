@@ -78,6 +78,7 @@ class NODE{
             value = val;
             children = (NODE*)malloc(sizeof(NODE)*nChildren);
             bp = children;
+            const_bp = children;
             numChildren = nChildren;
         }
         enum Symbol symbol;
@@ -85,6 +86,7 @@ class NODE{
         int numChildren;
         NODE* children;
         NODE* bp;
+        NODE* const_bp;
 };
 
 
