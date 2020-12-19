@@ -32,9 +32,12 @@ void printStack();
 void printEntry(binding);
 
 
-void printDeclaration(NODE*, bool);
+int numRegister;
+void printGlobalDeclaration(NODE*, bool);
+void printFuncDefinition(NODE*);
 void cgen(NODE*, bool);
 ofstream cc;
+
 
 static void usage()
 {
@@ -60,7 +63,9 @@ main(int argc, char **argv)
  	free(bp);
   	printf("retv = %d\n", ans);
   	cc.open("cc.ll");
+  	initialize_stack();
   	cgen(abstract_syntax_tree, true);
+  	printStack();
   	exit(0);
   }
   printf("retv = %d\n", ret);
@@ -71,8 +76,15 @@ main(int argc, char **argv)
 
 
 void cgen(NODE* p, bool global){	// If global = 1, it is an external declaration.
+	if(p->symbol == RETURNN){
+	
+	}
 	if(p->symbol == DECLARATION){
-		printDeclaration(p,global);
+		if (global) printGlobalDeclaration(p,true);// else printDeclaration(p);
+		return;
+	}
+	else if(p->symbol == FUNC_DEF){
+		printFuncDefinition(p);
 		return;
 	}
 	else{
@@ -84,8 +96,104 @@ void cgen(NODE* p, bool global){	// If global = 1, it is an external declaration
 	}
 }
 
+void printFuncDefinition(NODE* p){
+	numRegister = 0;
+	p->bp = p->const_bp;
+	NODE* declaration_specifier		= p->bp++; declaration_specifier->bp = declaration_specifier->const_bp;
+	NODE* declarator 				= p->bp++; declarator->bp = declarator->const_bp;
+	NODE* function_body 			= p->bp++; function_body->bp = function_body->const_bp;
+	if (declaration_specifier->symbol == CONSTT) declaration_specifier = declaration_specifier->const_bp;
+	string type = "", pointer = "", parameters = "";
+	switch(declaration_specifier->symbol){
+		case TYPE_INT:
+			type = " i32";
+			break;
+		case TYPE_CHAR:
+			type = " i8";
+			break;
+		case TYPE_BOOL:
+			type = " i8";
+			break;
+	}
+	while(declarator->symbol == POINTER){
+		declarator = declarator->const_bp;
+		pointer = pointer + "*";
+	}
+	declarator->bp = declarator->const_bp;
+	NODE* ident = declarator->bp++; ident->bp = ident->const_bp;
+	char* identifier = (char*) ident->value;
+	if(doesExist(identifier,Function)==0){
+		cout << "Redaclaration of "<< identifier << endl;
+		exit(0);
+	}
+	binding* entry = new binding(identifier, Function, -1); // Value -1 means that the variable is global!
+	if(symbol_table-bp == sizeAssigned)
+		increaseStackSize();
+	*(symbol_table++) = *entry;
+	numEntries++;
+	enterScope();
+	if(declarator->bp == declarator->children){
+		parameters = "()";
+	}
+	else{
+		parameters = "(";
+		NODE* par = declarator->bp++;
+		par->bp = par->const_bp;
+		while(par->bp != par->children){
+			if(par->bp != par->const_bp) parameters = parameters + ", ";
+				string par_type = "", par_pointer = "";
+				NODE* curr_par = par->bp; curr_par->bp = curr_par->const_bp;
+				if(curr_par->symbol == DECLARATION){
+					NODE* declaration_specifier = curr_par->bp++; declaration_specifier->bp = declaration_specifier->const_bp;
+					NODE* declarator = curr_par->bp++; declarator->bp = declarator->const_bp;
+					while(declaration_specifier->symbol == CONSTT){
+						declaration_specifier = declaration_specifier->const_bp;
+					}
+					switch(declaration_specifier->symbol){
+						case TYPE_INT:
+							par_type = "i32";
+							break;
+						case TYPE_CHAR:
+							par_type = "i8";
+							break;
+						case TYPE_BOOL:
+							par_type = "i8";
+							break;
+					}
+					while(declarator->symbol == POINTER){
+						declarator = declarator->bp;
+						par_pointer = par_pointer + "*";
+					}
+					if(declarator->symbol == FUNC_DECLARATOR){
+						cout << "Fucntion declared with a function as one of its parameters\n";
+						exit(0);
+					}
+					char* par_identifier = (char*)declarator->value;
+					binding* entry = new binding(par_identifier, Variable, numRegister); // Value -1 means that the variable is global!
+					if(symbol_table-bp == sizeAssigned)
+						increaseStackSize();
+					*(symbol_table++) = *entry;
+					numEntries++;
+					string reg = to_string(numRegister);
+					parameters = parameters + par_type + par_pointer + " %" + reg;
+				}
+			numRegister++;
+			par->bp++;
+		}
+		parameters = parameters + "){\n";
+	}
+	cc << "\ndefine"+ type + pointer + " @"<<identifier<<parameters + "\n";
+//	while (function_body->bp != function_body->children){
+//		cgen(function_body->bp);
+//		function_body->bp++;
+//	}
+	cc << "}\n\n";
+}	
 
-void printDeclaration(NODE* p, bool global){
+
+
+
+void printGlobalDeclaration(NODE* p, bool global){
 	bool isInitiazlizer = false;
 	bool isFunc = false;
 	string isConstant = "global";
@@ -96,7 +204,8 @@ void printDeclaration(NODE* p, bool global){
 		isConstant = "constant";										//Its const in case of gloval vairables if variable is const otherwise its global.
 		declaration_specifiers = declaration_specifiers->const_bp;
 	}
-	string type = "", align = "", specific_align = "", pointer = "", initializer = "", identifier = "", parameters = "";
+	char* identifier;
+	string type = "", align = "", specific_align = "", pointer = "", initializer = "", parameters = "";
 	switch(declaration_specifiers->symbol){
 		case TYPE_INT:
 			type = " i32"; align = ", align 4"; specific_align = align;
@@ -183,7 +292,7 @@ void printDeclaration(NODE* p, bool global){
 			if(!isInitiazlizer) initializer = "null";
 		}
 		if(ident->symbol == FUNC_DECLARATOR){
-			NODE* parent = ident;
+			NODE* parent = ident; parent->bp = parent->const_bp;
 			isFunc = true;
 			ident = parent->bp++; ident->bp = ident->const_bp;
 			if(parent->bp == parent->children){
@@ -231,16 +340,31 @@ void printDeclaration(NODE* p, bool global){
 		}
 		identifier = (char*)ident->value;
 		if(global){
-		if(isFunc)
-			cc << "declare"+ type + pointer + " @"+identifier+parameters + "\n";
-		else
-			cc << "@"+identifier+" = "+isConstant+type+pointer+" "+initializer+specific_align+"\n";
+			if(isFunc){
+				if(doesExist(identifier,Function)==0){
+					cout << "Redaclaration of "<< identifier << endl;
+					exit(0);
+				}
+				binding* entry = new binding(identifier, Function, -1); // Value -1 means that the variable is global!
+				if(symbol_table-bp == sizeAssigned)
+					increaseStackSize();
+				*(symbol_table++) = *entry;
+				numEntries++;
+				cc << "\ndeclare"+ type + pointer + " @"<<identifier<<parameters + "\n";
+			}
+			else{
+				binding* entry = new binding(identifier, Variable, -1);
+				if(symbol_table-bp == sizeAssigned)
+					increaseStackSize();
+				*(symbol_table++) = *entry;
+				numEntries++;
+				cc << "@"<<identifier<<" = "+isConstant+type+pointer+" "+initializer+specific_align+"\n";
+			}
 		}
 		declaration_list->bp++;
 		pointer = "";
 		initializer = "";
 		parameters = "";
-		identifier = "";
 		specific_align = align;
 		initializer = "";
 		isInitiazlizer = false;
@@ -518,7 +642,7 @@ void printEntry(binding b){
 
 switch(b.type){
 	case Variable:
-		cout << "Variable("<<b.identifier<<")|";
+		cout << "[Variable("<<b.identifier<<")|" << "Register("<<b.scope_size <<")]";
 		break;
 	case Function:
 		cout << "Function("<<b.identifier<<")|";
