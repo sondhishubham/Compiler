@@ -403,7 +403,7 @@ parameter_list
 parameter_declaration
 	: declaration_specifiers declarator						{NODE* m = createBinaryNode(DECLARATION, $1, $2); $$ = createUnaryNode(PARAMETERS,m);}
 //	| declaration_specifiers abstract_declarator
-	| declaration_specifiers								{$$ = createUnaryNode(PARAMETERS, $1);}
+//	| declaration_specifiers								{$$ = createUnaryNode(PARAMETERS, $1);}
 	;
 
 //identifier_list

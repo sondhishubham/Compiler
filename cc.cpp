@@ -137,9 +137,9 @@ void printDeclaration(NODE* p, bool global){
 				NODE* par = k->bp++;
 				par->bp = par->const_bp;
 				while(par->bp != par->children){
-					if(par->bp != par->const_bp) parameters = parameters + ",";
+					if(par->bp != par->const_bp) parameters = parameters + ", ";
 					string par_type = "", par_pointer = "";
-					NODE* curr_par = par->bp; curr_par = curr_par->const_bp;
+					NODE* curr_par = par->bp; curr_par->bp = curr_par->const_bp;
 					if(curr_par->symbol == DECLARATION){
 						NODE* declaration_specifier = curr_par->bp++; declaration_specifier->bp = declaration_specifier->const_bp;
 						NODE* declarator = curr_par->bp++; declarator->bp = declarator->const_bp;
@@ -148,13 +148,13 @@ void printDeclaration(NODE* p, bool global){
 						}
 						switch(declaration_specifiers->symbol){
 							case TYPE_INT:
-								par_type = " i32";
+								par_type = "i32";
 								break;
 							case TYPE_CHAR:
-								par_type = " i8";
+								par_type = "i8";
 								break;
 							case TYPE_BOOL:
-								par_type = " i8";
+								par_type = "i8";
 								break;
 						}
 						while(declarator->symbol == POINTER){
@@ -183,19 +183,20 @@ void printDeclaration(NODE* p, bool global){
 			if(!isInitiazlizer) initializer = "null";
 		}
 		if(ident->symbol == FUNC_DECLARATOR){
+			NODE* parent = ident;
 			isFunc = true;
-			ident = k->bp++; ident->bp = ident->const_bp;
-			if(k->bp == k->children){
+			ident = parent->bp++; ident->bp = ident->const_bp;
+			if(parent->bp == parent->children){
 				parameters = "()";
 			}
 			else{
 				parameters = "(";
-				NODE* par = k->bp++;
+				NODE* par = parent->bp++;
 				par->bp = par->const_bp;
 				while(par->bp != par->children){
-					if(par->bp != par->const_bp) parameters = parameters + ",";
+					if(par->bp != par->const_bp) parameters = parameters + ", ";
 					string par_type = "", par_pointer = "";
-					NODE* curr_par = par->bp; curr_par = curr_par->const_bp;
+					NODE* curr_par = par->bp; curr_par->bp = curr_par->const_bp;
 					if(curr_par->symbol == DECLARATION){
 						NODE* declaration_specifier = curr_par->bp++; declaration_specifier->bp = declaration_specifier->const_bp;
 						NODE* declarator = curr_par->bp++; declarator->bp = declarator->const_bp;
@@ -204,13 +205,13 @@ void printDeclaration(NODE* p, bool global){
 						}
 						switch(declaration_specifiers->symbol){
 							case TYPE_INT:
-								par_type = " i32";
+								par_type = "i32";
 								break;
 							case TYPE_CHAR:
-								par_type = " i8";
+								par_type = "i8";
 								break;
 							case TYPE_BOOL:
-								par_type = " i8";
+								par_type = "i8";
 								break;
 						}
 						while(declarator->symbol == POINTER){
@@ -231,7 +232,7 @@ void printDeclaration(NODE* p, bool global){
 		identifier = (char*)ident->value;
 		if(global){
 		if(isFunc)
-			cc << "declare"+ type + pointer + "@"+identifier+parameters + "\n";
+			cc << "declare"+ type + pointer + " @"+identifier+parameters + "\n";
 		else
 			cc << "@"+identifier+" = "+isConstant+type+pointer+" "+initializer+specific_align+"\n";
 		}
