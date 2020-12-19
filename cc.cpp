@@ -72,12 +72,26 @@ main(int argc, char **argv)
   exit(0);
 }
 
-
+															// Numregister is the next value and numregister-1 is the last used register.
 
 
 void cgen(NODE* p, bool global){	// If global = 1, it is an external declaration.
+	if(p->symbol == INTEGER){
+		int val = *((int*)p->value);
+		cc <<"%"<<numRegister<<" = alloca i32, align 4\n";
+		cc << "store i32 "<< val <<", i32* %" << numRegister++<<", align 4\n";
+	  	cc <<"%"<<numRegister++ <<" = load i32, i32* %" << (numRegister-2)<<", align 4\n";
+		return;
+	}
 	if(p->symbol == RETURNN){
-	
+		p->bp = p->const_bp;
+		if(p->bp == p->children){
+			cc << "ret i32 0";
+			return;
+		}
+		cgen(p->bp, false);
+		cc << "ret i32 %" << (numRegister-1) << '\n';
+		return;
 	}
 	if(p->symbol == DECLARATION){
 		if (global) printGlobalDeclaration(p,true);// else printDeclaration(p);
@@ -182,11 +196,12 @@ void printFuncDefinition(NODE* p){
 		}
 		parameters = parameters + "){\n";
 	}
-	cc << "\ndefine"+ type + pointer + " @"<<identifier<<parameters + "\n";
-//	while (function_body->bp != function_body->children){
-//		cgen(function_body->bp);
-//		function_body->bp++;
-//	}
+	numRegister++;
+	cc << "\ndefine"+ type + pointer + " @"<<identifier<<parameters;
+	while (function_body->bp != function_body->children){
+		cgen(function_body->bp, false);
+		function_body->bp++;
+	}
 	cc << "}\n\n";
 }	
 
