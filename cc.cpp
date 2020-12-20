@@ -34,6 +34,7 @@ void printEntry(binding);
 
 int numRegister;
 void printGlobalDeclaration(NODE*, bool);
+void printDeclaration(NODE*);
 void printFuncDefinition(NODE*);
 void cgen(NODE*, bool);
 ofstream cc;
@@ -94,7 +95,7 @@ void cgen(NODE* p, bool global){	// If global = 1, it is an external declaration
 		return;
 	}
 	if(p->symbol == DECLARATION){
-		if (global) printGlobalDeclaration(p,true);// else printDeclaration(p);
+		if (global) printGlobalDeclaration(p,true); else printDeclaration(p);
 		return;
 	}
 	else if(p->symbol == FUNC_DEF){
@@ -109,6 +110,75 @@ void cgen(NODE* p, bool global){	// If global = 1, it is an external declaration
 		return;
 	}
 }
+
+
+void printDeclaration(NODE* p){
+	p->bp = p->const_bp;
+	NODE* declaration_specifier = p->bp++; declaration_specifier->bp 	= declaration_specifier->const_bp;
+	NODE* declaration_list 		= p->bp++; declaration_list->bp 		= declaration_list->const_bp;
+	if (declaration_specifier->symbol == CONSTT) declaration_specifier = declaration_specifier->const_bp;
+	string type = "", pointer = "", align = "", specific_align = "";
+	switch(declaration_specifier->symbol){
+		case TYPE_INT:
+			type = "i32"; align = ", align 4"; specific_align = align;
+			break;
+		case TYPE_CHAR:
+			type = "i8"; align = ", align 1"; specific_align = align;
+			break;
+		case TYPE_BOOL:
+			type = "i8"; align = ", align 1"; specific_align = align;
+			break;
+	}
+	while(declaration_list->bp != declaration_list-> children){
+		NODE* ident;
+		NODE* k = declaration_list->bp; k->bp = k->const_bp;
+		if(k->symbol == INITIALIZE){
+			ident = k->bp++; ident->bp = ident->const_bp;
+			while(ident->symbol == POINTER){
+				pointer = pointer+"*";
+				specific_align = ", align 8";
+				ident = ident->const_bp;
+			}
+			ident->bp = ident->const_bp;
+			if(ident->symbol == FUNC_DECLARATOR){
+				cout << "Function declared in a function\n";
+				exit(0);
+			}
+			int curr_register = numRegister;
+			binding* entry = new binding((char*)ident->value, Variable, curr_register);
+			if(symbol_table-bp == sizeAssigned)
+				increaseStackSize();
+			*(symbol_table++) = *entry;
+			numEntries++;
+			NODE* val = k->bp++;
+			cc << "%"<<numRegister++<<"= alloca "<<type+pointer+specific_align<<"\n"; // numRegister is increased here for the next instruction.
+			cgen(val, false);
+			cc << "store i32"+pointer+" %"<<numRegister-1<<", "+type <<'*'+pointer<<" %" <<curr_register<<align << '\n';
+		}
+		else{
+			ident = k; ident->bp = ident->const_bp;
+			while(ident->symbol == POINTER){
+				pointer = pointer+"*";
+				specific_align = ", align 8";
+				ident = ident->const_bp;
+			}
+			if(ident->symbol == FUNC_DECLARATOR){
+				cout << "Fucntion declared in a function\n";
+				exit(0);
+			}
+			binding* entry = new binding((char*)ident->value, Variable, numRegister); 
+			if(symbol_table-bp == sizeAssigned)
+				increaseStackSize();
+			*(symbol_table++) = *entry;
+			numEntries++;
+			cc << "%"<<numRegister++<<"= alloca "<<type+pointer+specific_align<<"\n";
+		}
+	declaration_list->bp++;
+	pointer = "";
+	specific_align = align;
+	}
+}
+
 
 void printFuncDefinition(NODE* p){
 	numRegister = 0;
