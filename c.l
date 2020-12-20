@@ -93,7 +93,7 @@ static int check_type(void);
 {HP}{H}+{IS}?				{ yylval.number = atoi(yytext);return I_CONSTANT; }
 {NZ}{D}*{IS}?				{ yylval.number = atoi(yytext);return I_CONSTANT; }
 "0"{O}*{IS}?				{ yylval.number = atoi(yytext);return I_CONSTANT; }
-{CP}?"'"([^'\\\n]|{ES})+"'"		{ yylval.number = atoi(yytext);return I_CONSTANT; }
+{CP}?"'"([^'\\\n]|{ES})+"'"		{ char m = yytext[1];yylval.number = m;return I_CONSTANT; }
 
 {D}+{E}{FS}?				{ return F_CONSTANT; }
 {D}*"."{D}+{E}?{FS}?			{ return F_CONSTANT; }

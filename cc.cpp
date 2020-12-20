@@ -33,10 +33,11 @@ void printEntry(binding);
 
 
 int numRegister;
+int getRegister(char*);
 void printGlobalDeclaration(NODE*, bool);
 void printDeclaration(NODE*);
 void printFuncDefinition(NODE*);
-void cgen(NODE*, bool);
+void cgen(NODE*, bool, string, SYMBOL_TYPE);
 ofstream cc;
 
 
@@ -65,7 +66,7 @@ main(int argc, char **argv)
   	printf("retv = %d\n", ans);
   	cc.open("cc.ll");
   	initialize_stack();
-  	cgen(abstract_syntax_tree, true);
+  	cgen(abstract_syntax_tree, true, "", Function);
   	printStack();
   	exit(0);
   }
@@ -76,22 +77,48 @@ main(int argc, char **argv)
 															// Numregister is the next value and numregister-1 is the last used register.
 
 
-void cgen(NODE* p, bool global){	// If global = 1, it is an external declaration.
+void cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t){	// If global = 1, it is an external declaration.
 	if(p->symbol == INTEGER){
+		string align;
+		if(t == Pointer_type) align = ", align 8\n";
+		else if(t == Integer_type) align = ", align 4\n";
+		else align = ", align 1\n"; 
 		int val = *((int*)p->value);
-		cc <<"%"<<numRegister<<" = alloca i32, align 4\n";
-		cc << "store i32 "<< val <<", i32* %" << numRegister++<<", align 4\n";
-	  	cc <<"%"<<numRegister++ <<" = load i32, i32* %" << (numRegister-2)<<", align 4\n";
+		cc <<"%"<<numRegister<<" = alloca "<<ret_type<<align;
+		cc << "store " <<ret_type <<" "<< val <<", "<<ret_type<<"* %" << numRegister++<<align;
+	  	cc <<"%"<<numRegister++ <<" = load "<<ret_type<<", "<<ret_type<<"* %" << (numRegister-2)<<align;
+		return;
+	}
+	if(p->symbol == IDENT){
+		char* identifier = (char*)p->value;
+		int reg = getRegister(identifier);
+//		%7 = alloca i32, align 4
+//  		store i32 %6, i32* %7, align 4
+//  		%8 = load i32, i32* %7, align 4	
 		return;
 	}
 	if(p->symbol == RETURNN){
-		p->bp = p->const_bp;
-		if(p->bp == p->children){
-			cc << "ret i32 0";
+		if(p->numChildren==0){
+			if(t == Integer_type){
+				cc << "ret "<< ret_type << " 0\n";
+				}
+			else if(t == Character_type){
+				cc << "ret "<< ret_type << " 0\n";
+				}
+			else if(t == Pointer_type){
+				cc << "ret " << ret_type <<" null\n";
+			}
+			else if(t == Bool_type){
+				cc << "ret "<< ret_type << " false\n";
+			}
+			else if(t == Void_type){
+				cc << "ret void\n";
+			}
 			return;
 		}
-		cgen(p->bp, false);
-		cc << "ret i32 %" << (numRegister-1) << '\n';
+		p->bp = p->const_bp;
+		cgen(p->bp, false, ret_type, t);
+		cc << "ret "<<ret_type<<" %" << (numRegister-1) << '\n';
 		return;
 	}
 	if(p->symbol == DECLARATION){
@@ -105,7 +132,7 @@ void cgen(NODE* p, bool global){	// If global = 1, it is an external declaration
 	else{
 		p->bp = p->const_bp;
 		while(p->bp!=p->children){
-			cgen(p->bp++,global);
+			cgen(p->bp++,global,ret_type,t);
 		}
 		return;
 	}
@@ -117,18 +144,20 @@ void printDeclaration(NODE* p){
 	NODE* declaration_specifier = p->bp++; declaration_specifier->bp 	= declaration_specifier->const_bp;
 	NODE* declaration_list 		= p->bp++; declaration_list->bp 		= declaration_list->const_bp;
 	if (declaration_specifier->symbol == CONSTT) declaration_specifier = declaration_specifier->const_bp;
+	SYMBOL_TYPE t; int num_pointer(0); SYMBOL_TYPE specific_t;
 	string type = "", pointer = "", align = "", specific_align = "";
 	switch(declaration_specifier->symbol){
 		case TYPE_INT:
-			type = "i32"; align = ", align 4"; specific_align = align;
+			type = "i32"; align = ", align 4"; specific_align = align; t = Integer_type;
 			break;
 		case TYPE_CHAR:
-			type = "i8"; align = ", align 1"; specific_align = align;
+			type = "i8"; align = ", align 1"; specific_align = align; t = Character_type;
 			break;
 		case TYPE_BOOL:
-			type = "i8"; align = ", align 1"; specific_align = align;
+			type = "i8"; align = ", align 1"; specific_align = align; t = Bool_type;
 			break;
 	}
+	specific_t = t;
 	while(declaration_list->bp != declaration_list-> children){
 		NODE* ident;
 		NODE* k = declaration_list->bp; k->bp = k->const_bp;
@@ -136,6 +165,8 @@ void printDeclaration(NODE* p){
 			ident = k->bp++; ident->bp = ident->const_bp;
 			while(ident->symbol == POINTER){
 				pointer = pointer+"*";
+				specific_t = Pointer_type;
+				num_pointer++;
 				specific_align = ", align 8";
 				ident = ident->const_bp;
 			}
@@ -145,19 +176,22 @@ void printDeclaration(NODE* p){
 				exit(0);
 			}
 			int curr_register = numRegister;
-			binding* entry = new binding((char*)ident->value, Variable, curr_register);
+			binding* entry = new binding((char*)ident->value, specific_t, curr_register);
+			entry->numPointer = num_pointer;
 			if(symbol_table-bp == sizeAssigned)
 				increaseStackSize();
 			*(symbol_table++) = *entry;
 			numEntries++;
 			NODE* val = k->bp++;
 			cc << "%"<<numRegister++<<"= alloca "<<type+pointer+specific_align<<"\n"; // numRegister is increased here for the next instruction.
-			cgen(val, false);
-			cc << "store i32"+pointer+" %"<<numRegister-1<<", "+type <<'*'+pointer<<" %" <<curr_register<<align << '\n';
+			cgen(val, false, type+pointer,specific_t);
+			cc << "store " <<type+pointer<<" %"<<numRegister-1<<", "+type <<'*'+pointer<<" %" <<curr_register<<align << '\n';
 		}
 		else{
 			ident = k; ident->bp = ident->const_bp;
 			while(ident->symbol == POINTER){
+				specific_t = Pointer_type;
+				num_pointer++;
 				pointer = pointer+"*";
 				specific_align = ", align 8";
 				ident = ident->const_bp;
@@ -166,7 +200,8 @@ void printDeclaration(NODE* p){
 				cout << "Fucntion declared in a function\n";
 				exit(0);
 			}
-			binding* entry = new binding((char*)ident->value, Variable, numRegister); 
+			binding* entry = new binding((char*)ident->value, specific_t, numRegister);
+			entry->numPointer = num_pointer; 
 			if(symbol_table-bp == sizeAssigned)
 				increaseStackSize();
 			*(symbol_table++) = *entry;
@@ -175,7 +210,9 @@ void printDeclaration(NODE* p){
 		}
 	declaration_list->bp++;
 	pointer = "";
+	num_pointer = 0;
 	specific_align = align;
+	specific_t = t;
 	}
 }
 
@@ -187,17 +224,19 @@ void printFuncDefinition(NODE* p){
 	NODE* declarator 				= p->bp++; declarator->bp = declarator->const_bp;
 	NODE* function_body 			= p->bp++; function_body->bp = function_body->const_bp;
 	if (declaration_specifier->symbol == CONSTT) declaration_specifier = declaration_specifier->const_bp;
-	string type = "", pointer = "", parameters = "";
+	string type = "", pointer = "", parameters = ""; SYMBOL_TYPE ret_type;
 	switch(declaration_specifier->symbol){
 		case TYPE_INT:
-			type = " i32";
+			type = " i32"; ret_type = Integer_type;
 			break;
 		case TYPE_CHAR:
-			type = " i8";
+			type = " i8"; ret_type = Character_type;
 			break;
 		case TYPE_BOOL:
-			type = " i8";
+			type = " i8"; ret_type = Bool_type;
 			break;
+		case TYPE_VOID:
+			type = ""; ret_type = Void_type;
 	}
 	while(declarator->symbol == POINTER){
 		declarator = declarator->const_bp;
@@ -217,7 +256,7 @@ void printFuncDefinition(NODE* p){
 	numEntries++;
 	enterScope();
 	if(declarator->bp == declarator->children){
-		parameters = "()";
+		parameters = "(){\n";
 	}
 	else{
 		parameters = "(";
@@ -226,6 +265,7 @@ void printFuncDefinition(NODE* p){
 		while(par->bp != par->children){
 			if(par->bp != par->const_bp) parameters = parameters + ", ";
 				string par_type = "", par_pointer = "";
+				SYMBOL_TYPE t, specific_t; int num_pointer(0);
 				NODE* curr_par = par->bp; curr_par->bp = curr_par->const_bp;
 				if(curr_par->symbol == DECLARATION){
 					NODE* declaration_specifier = curr_par->bp++; declaration_specifier->bp = declaration_specifier->const_bp;
@@ -235,25 +275,29 @@ void printFuncDefinition(NODE* p){
 					}
 					switch(declaration_specifier->symbol){
 						case TYPE_INT:
-							par_type = "i32";
+							par_type = "i32"; t = Integer_type;
 							break;
 						case TYPE_CHAR:
-							par_type = "i8";
+							par_type = "i8"; t = Character_type;
 							break;
 						case TYPE_BOOL:
-							par_type = "i8";
+							par_type = "i8"; t = Bool_type;
 							break;
 					}
+					specific_t = t;
 					while(declarator->symbol == POINTER){
 						declarator = declarator->bp;
 						par_pointer = par_pointer + "*";
+						specific_t = Pointer_type;
+						num_pointer++;
 					}
 					if(declarator->symbol == FUNC_DECLARATOR){
 						cout << "Fucntion declared with a function as one of its parameters\n";
 						exit(0);
 					}
 					char* par_identifier = (char*)declarator->value;
-					binding* entry = new binding(par_identifier, Variable, numRegister); // Value -1 means that the variable is global!
+					binding* entry = new binding(par_identifier, specific_t, numRegister);
+					entry->numPointer = num_pointer;
 					if(symbol_table-bp == sizeAssigned)
 						increaseStackSize();
 					*(symbol_table++) = *entry;
@@ -267,11 +311,18 @@ void printFuncDefinition(NODE* p){
 		parameters = parameters + "){\n";
 	}
 	numRegister++;
+	bool isReturnAbsent = true;
 	cc << "\ndefine"+ type + pointer + " @"<<identifier<<parameters;
 	while (function_body->bp != function_body->children){
-		cgen(function_body->bp, false);
+		if(function_body->bp->symbol == RETURNN) isReturnAbsent = false;
+		cgen(function_body->bp, false,type+pointer,ret_type);
 		function_body->bp++;
 	}
+//	if(isReturnAbsent){
+//		NODE* last_node = new NODE(RETURNN, NULL, 0);
+//		cout << "I am here\n";
+//		cgen(last_node, false, type, ret_type);
+//	}
 	cc << "}\n\n";
 }	
 
@@ -290,18 +341,20 @@ void printGlobalDeclaration(NODE* p, bool global){
 		declaration_specifiers = declaration_specifiers->const_bp;
 	}
 	char* identifier;
+	SYMBOL_TYPE t, specific_t; int num_pointer(0);
 	string type = "", align = "", specific_align = "", pointer = "", initializer = "", parameters = "";
 	switch(declaration_specifiers->symbol){
 		case TYPE_INT:
-			type = " i32"; align = ", align 4"; specific_align = align;
+			type = " i32"; align = ", align 4"; specific_align = align; t = Integer_type;
 			break;
 		case TYPE_CHAR:
-			type = " i8"; align = ", align 1"; specific_align = align;
+			type = " i8"; align = ", align 1"; specific_align = align; t = Character_type;
 			break;
 		case TYPE_BOOL:
-			type = " i8"; align = ", align 1"; specific_align = align;
+			type = " i8"; align = ", align 1"; specific_align = align; t = Bool_type;
 			break;
 	}
+	specific_t = t;
 	declaration_list->bp = declaration_list->const_bp;
 	while(declaration_list->bp != declaration_list->children){
 		NODE* ident;
@@ -373,6 +426,8 @@ void printGlobalDeclaration(NODE* p, bool global){
 		while(ident->symbol==POINTER){		//In case of pointer
 			specific_align = ", align 8";
 			pointer = pointer+'*';
+			specific_t = Pointer_type;
+			num_pointer++;
 			ident=ident->const_bp;
 			if(!isInitiazlizer) initializer = "null";
 		}
@@ -438,7 +493,8 @@ void printGlobalDeclaration(NODE* p, bool global){
 				cc << "\ndeclare"+ type + pointer + " @"<<identifier<<parameters + "\n";
 			}
 			else{
-				binding* entry = new binding(identifier, Variable, -1);
+				binding* entry = new binding(identifier, specific_t, -1);
+				entry->numPointer = num_pointer;
 				if(symbol_table-bp == sizeAssigned)
 					increaseStackSize();
 				*(symbol_table++) = *entry;
@@ -454,43 +510,11 @@ void printGlobalDeclaration(NODE* p, bool global){
 		initializer = "";
 		isInitiazlizer = false;
 		isFunc = false;
+		num_pointer = 0;
+		specific_t = t;
 	}
 	return;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 int check_semantics(NODE* ptr){
@@ -688,16 +712,27 @@ void increaseStackSize(){
 	return;
 }
 
-int doesExist(char* k, SYMBOL_TYPE t){
+int getRegister(char* k){
 	binding* curr_ptr = symbol_table - 1;
-//	cout << endl;
-//	cout << "The value of bp is "<< bp<<endl;
 	while(curr_ptr != bp){
 		if(curr_ptr->type == Block){
 			curr_ptr--;
 			continue;
 		}
-//		cout << "The value of curr_ptr is "<<curr_ptr<<endl;
+		if(strcmp(k,curr_ptr->identifier)==0)
+			return curr_ptr->scope_size;
+		curr_ptr--;
+	}
+	return -2;
+}
+
+int doesExist(char* k, SYMBOL_TYPE t){
+	binding* curr_ptr = symbol_table - 1;
+	while(curr_ptr != bp){
+		if(curr_ptr->type == Block){
+			curr_ptr--;
+			continue;
+		}
 		if(strcmp(k,curr_ptr->identifier)==0)
 			return 0;
 		curr_ptr--;
@@ -707,7 +742,6 @@ int doesExist(char* k, SYMBOL_TYPE t){
 }
 
 bool isPreviouslyDeclared(char* k){
-//	cout << " I " <<endl;
 	binding* curr_ptr = symbol_table - 1;
 	while(curr_ptr->type != Block){
 		if(strcmp(k,curr_ptr->identifier)==0){
@@ -726,6 +760,18 @@ void printStack(){
 void printEntry(binding b){
 
 switch(b.type){
+	case Integer_type:
+		cout << "[Integer("<<b.identifier<<")|" << "Register("<<b.scope_size <<")]";
+		break;
+	case Character_type:
+		cout << "[Character("<<b.identifier<<")|" << "Register("<<b.scope_size <<")]";
+		break;
+	case Bool_type:
+		cout << "[Bool("<<b.identifier<<")|" << "Register("<<b.scope_size <<")]";
+		break;
+	case Pointer_type:
+		cout << "[Pointer("<<b.identifier<<", " <<b.numPointer << ")|" << "Register("<<b.scope_size <<")]";
+		break;
 	case Variable:
 		cout << "[Variable("<<b.identifier<<")|" << "Register("<<b.scope_size <<")]";
 		break;

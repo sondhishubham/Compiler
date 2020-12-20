@@ -1334,7 +1334,7 @@ YY_RULE_SETUP
 case 52:
 YY_RULE_SETUP
 #line 96 "c.l"
-{ yylval.number = atoi(yytext);return I_CONSTANT; }
+{ char m = yytext[1];yylval.number = m;return I_CONSTANT; }
 	YY_BREAK
 case 53:
 YY_RULE_SETUP
