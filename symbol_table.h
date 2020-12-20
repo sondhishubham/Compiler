@@ -22,6 +22,7 @@ class binding{
 		SYMBOL_TYPE type;
 		int scope_size;		//Also the register assigned to a variable;
 		binding(char* id, SYMBOL_TYPE t, int size){
+			numPointer  = 0;
 			identifier  = id;
 			type 	    = t;
 			scope_size	= size;

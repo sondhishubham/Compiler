@@ -33,11 +33,11 @@ void printEntry(binding);
 
 
 int numRegister;
-int getRegister(char*);
+binding* getVaribleInfo(char*);
 void printGlobalDeclaration(NODE*, bool);
 void printDeclaration(NODE*);
 void printFuncDefinition(NODE*);
-void cgen(NODE*, bool, string, SYMBOL_TYPE);
+void cgen(NODE*, bool, string, SYMBOL_TYPE, int);
 ofstream cc;
 
 
@@ -66,7 +66,7 @@ main(int argc, char **argv)
   	printf("retv = %d\n", ans);
   	cc.open("cc.ll");
   	initialize_stack();
-  	cgen(abstract_syntax_tree, true, "", Function);
+  	cgen(abstract_syntax_tree, true, "", Function, 0);
   	printStack();
   	exit(0);
   }
@@ -77,48 +77,62 @@ main(int argc, char **argv)
 															// Numregister is the next value and numregister-1 is the last used register.
 
 
-void cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t){	// If global = 1, it is an external declaration.
+void cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPointer){	// If global = 1, it is an external declaration.
 	if(p->symbol == INTEGER){
 		string align;
-		if(t == Pointer_type) align = ", align 8\n";
+		if(numPointer > 0) align = ", align 8\n";
 		else if(t == Integer_type) align = ", align 4\n";
 		else align = ", align 1\n"; 
 		int val = *((int*)p->value);
-		cc <<"%"<<numRegister<<" = alloca "<<ret_type<<align;
-		cc << "store " <<ret_type <<" "<< val <<", "<<ret_type<<"* %" << numRegister++<<align;
-	  	cc <<"%"<<numRegister++ <<" = load "<<ret_type<<", "<<ret_type<<"* %" << (numRegister-2)<<align;
+		cc <<"\t%"<<numRegister<<" = alloca "<<ret_type<<align;
+		cc << "\tstore " <<ret_type <<" "<< val <<", "<<ret_type<<"* %" << numRegister++<<align;
+	  	cc <<"\t%"<<numRegister++ <<" = load "<<ret_type<<", "<<ret_type<<"* %" << (numRegister-2)<<align;
 		return;
 	}
 	if(p->symbol == IDENT){
 		char* identifier = (char*)p->value;
-		int reg = getRegister(identifier);
-//		%7 = alloca i32, align 4
-//  		store i32 %6, i32* %7, align 4
-//  		%8 = load i32, i32* %7, align 4	
+		binding* reg = getVaribleInfo(identifier);
+		int num_pointer = reg->numPointer;
+		string type = "", align = "";
+		if(reg->type == Integer_type){
+			type = "i32"; align = ", align 4\n";
+		}
+		else if(reg->type == Character_type){
+			type = "i8"; align = ", align 1\n";
+		}
+		else if(reg->type == Bool_type){
+			type = "i8"; align = ", align 1\n";
+		}	
+		while(num_pointer > 0){
+			type = type + "*";
+			num_pointer--;
+			align = ", align 8\n";
+		}
+		cc <<"\t%"<<numRegister++<<" = "<<"load "<<type<<", "<<type<<"* %"<<reg->scope_size<<align;
 		return;
 	}
 	if(p->symbol == RETURNN){
 		if(p->numChildren==0){
-			if(t == Integer_type){
-				cc << "ret "<< ret_type << " 0\n";
-				}
+			if(numPointer>0){
+				cc << "\tret " << ret_type <<" null\n";
+			}
+			else if(t == Integer_type){
+				cc << "\tret "<< ret_type << " 0\n";
+			}
 			else if(t == Character_type){
-				cc << "ret "<< ret_type << " 0\n";
-				}
-			else if(t == Pointer_type){
-				cc << "ret " << ret_type <<" null\n";
+				cc << "\tret "<< ret_type << " 0\n";
 			}
 			else if(t == Bool_type){
-				cc << "ret "<< ret_type << " false\n";
+				cc << "\tret "<< ret_type << " false\n";
 			}
 			else if(t == Void_type){
-				cc << "ret void\n";
+				cc << "\tret void\n";
 			}
 			return;
 		}
 		p->bp = p->const_bp;
-		cgen(p->bp, false, ret_type, t);
-		cc << "ret "<<ret_type<<" %" << (numRegister-1) << '\n';
+		cgen(p->bp, false, ret_type, t,numPointer);
+		cc << "\tret "<<ret_type<<" %" << (numRegister-1) << '\n';
 		return;
 	}
 	if(p->symbol == DECLARATION){
@@ -132,7 +146,7 @@ void cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t){	// If global = 
 	else{
 		p->bp = p->const_bp;
 		while(p->bp!=p->children){
-			cgen(p->bp++,global,ret_type,t);
+			cgen(p->bp++,global,ret_type,t,numPointer);
 		}
 		return;
 	}
@@ -176,16 +190,16 @@ void printDeclaration(NODE* p){
 				exit(0);
 			}
 			int curr_register = numRegister;
-			binding* entry = new binding((char*)ident->value, specific_t, curr_register);
+			binding* entry = new binding((char*)ident->value, t, curr_register);
 			entry->numPointer = num_pointer;
 			if(symbol_table-bp == sizeAssigned)
 				increaseStackSize();
 			*(symbol_table++) = *entry;
 			numEntries++;
 			NODE* val = k->bp++;
-			cc << "%"<<numRegister++<<"= alloca "<<type+pointer+specific_align<<"\n"; // numRegister is increased here for the next instruction.
-			cgen(val, false, type+pointer,specific_t);
-			cc << "store " <<type+pointer<<" %"<<numRegister-1<<", "+type <<'*'+pointer<<" %" <<curr_register<<align << '\n';
+			cc << "\t%"<<numRegister++<<"= alloca "<<type+pointer+specific_align<<"\n"; // numRegister is increased here for the next instruction.
+			cgen(val, false, type+pointer,t,num_pointer);
+			cc << "\tstore " <<type+pointer<<" %"<<numRegister-1<<", "+type <<'*'+pointer<<" %" <<curr_register<<align << '\n';
 		}
 		else{
 			ident = k; ident->bp = ident->const_bp;
@@ -200,13 +214,13 @@ void printDeclaration(NODE* p){
 				cout << "Fucntion declared in a function\n";
 				exit(0);
 			}
-			binding* entry = new binding((char*)ident->value, specific_t, numRegister);
+			binding* entry = new binding((char*)ident->value, t, numRegister);
 			entry->numPointer = num_pointer; 
 			if(symbol_table-bp == sizeAssigned)
 				increaseStackSize();
 			*(symbol_table++) = *entry;
 			numEntries++;
-			cc << "%"<<numRegister++<<"= alloca "<<type+pointer+specific_align<<"\n";
+			cc << "\t%"<<numRegister++<<"= alloca "<<type+pointer+specific_align<<"\n";
 		}
 	declaration_list->bp++;
 	pointer = "";
@@ -224,7 +238,7 @@ void printFuncDefinition(NODE* p){
 	NODE* declarator 				= p->bp++; declarator->bp = declarator->const_bp;
 	NODE* function_body 			= p->bp++; function_body->bp = function_body->const_bp;
 	if (declaration_specifier->symbol == CONSTT) declaration_specifier = declaration_specifier->const_bp;
-	string type = "", pointer = "", parameters = ""; SYMBOL_TYPE ret_type;
+	string type = "", pointer = "", parameters = ""; SYMBOL_TYPE ret_type; int num_ptr(0);
 	switch(declaration_specifier->symbol){
 		case TYPE_INT:
 			type = " i32"; ret_type = Integer_type;
@@ -241,6 +255,7 @@ void printFuncDefinition(NODE* p){
 	while(declarator->symbol == POINTER){
 		declarator = declarator->const_bp;
 		pointer = pointer + "*";
+		num_ptr++;
 	}
 	declarator->bp = declarator->const_bp;
 	NODE* ident = declarator->bp++; ident->bp = ident->const_bp;
@@ -296,7 +311,7 @@ void printFuncDefinition(NODE* p){
 						exit(0);
 					}
 					char* par_identifier = (char*)declarator->value;
-					binding* entry = new binding(par_identifier, specific_t, numRegister);
+					binding* entry = new binding(par_identifier, t, numRegister);
 					entry->numPointer = num_pointer;
 					if(symbol_table-bp == sizeAssigned)
 						increaseStackSize();
@@ -315,14 +330,13 @@ void printFuncDefinition(NODE* p){
 	cc << "\ndefine"+ type + pointer + " @"<<identifier<<parameters;
 	while (function_body->bp != function_body->children){
 		if(function_body->bp->symbol == RETURNN) isReturnAbsent = false;
-		cgen(function_body->bp, false,type+pointer,ret_type);
+		cgen(function_body->bp, false,type+pointer,ret_type,num_ptr);
 		function_body->bp++;
 	}
-//	if(isReturnAbsent){
-//		NODE* last_node = new NODE(RETURNN, NULL, 0);
-//		cout << "I am here\n";
-//		cgen(last_node, false, type, ret_type);
-//	}
+	if(isReturnAbsent){
+		NODE* last_node = new NODE(RETURNN, NULL, 0);
+		cgen(last_node, false, type+pointer, ret_type,num_ptr);
+	}
 	cc << "}\n\n";
 }	
 
@@ -712,7 +726,8 @@ void increaseStackSize(){
 	return;
 }
 
-int getRegister(char* k){
+binding* getVaribleInfo(char* k){
+	cout << "I am here/n";
 	binding* curr_ptr = symbol_table - 1;
 	while(curr_ptr != bp){
 		if(curr_ptr->type == Block){
@@ -720,10 +735,10 @@ int getRegister(char* k){
 			continue;
 		}
 		if(strcmp(k,curr_ptr->identifier)==0)
-			return curr_ptr->scope_size;
+			return curr_ptr;
 		curr_ptr--;
 	}
-	return -2;
+	return NULL;
 }
 
 int doesExist(char* k, SYMBOL_TYPE t){

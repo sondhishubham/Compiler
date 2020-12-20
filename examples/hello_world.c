@@ -1,9 +1,9 @@
 
 char a = 'a';
 
-char* main(){
-	_Bool c = 1;
-	char a = 'c';
-	return ;
+
+int main(){
+	char m = 'a';
+	char k = m;
 }
 
