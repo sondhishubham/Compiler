@@ -57,13 +57,13 @@ main(int argc, char **argv)
   yyin = fopen(filename, "r");
   assert(yyin);
   int ret = yyparse();
-//  printTree(abstract_syntax_tree); cout << '\n';
+//  printTree(abstract_syntax_tree); cout << '\n'; // iF you are going to print tree, remove check semantics!!!!
 	if(ret != 0){
   		printf("retv = %d\n", ret);
   		exit(0);
 	}
   	initialize_stack();
-   	int ans = check_semantics(abstract_syntax_tree);
+   	int ans = check_semantics(abstract_syntax_tree);//Don't check semantics if the code prints syntax tree.
  	exitScope();
  	free(bp);
  	if(ans != 0){
@@ -209,7 +209,7 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 		}		
 		return t;
 	}
-	if(p->symbol == LESS_THAN || p->symbol == GREATER_THAN || p->symbol == LESS_THAN_EQUAL_TO || p->symbol == GREATER_THAN_EQUAL_TO || p->symbol == EQUAL_TO || p->symbol == NOT_EQUAL_TO || p->symbol == EXCLUSIVE_OR || p->symbol == INCLUSIVE_OR || p->symbol == AND){
+	if(p->symbol == LESS_THAN || p->symbol == GREATER_THAN || p->symbol == LESS_THAN_EQUAL_TO || p->symbol == GREATER_THAN_EQUAL_TO || p->symbol == EQUAL_TO || p->symbol == NOT_EQUAL_TO || p->symbol == EXCLUSIVE_OR || p->symbol == INCLUSIVE_OR || p->symbol == AND || p->symbol == LOGICAL_AND || p->symbol == LOGICAL_OR){
 		p->bp = p->const_bp;
 		int reg1, reg2;
 		SYMBOL_TYPE arg1 = cgen(p->bp++, global, ret_type, t, numPointer);
@@ -262,6 +262,14 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 				cc << "\t%"<<numRegister++<<" = icmp ne i32 %"<<numRegister-2<<", 0"<<'\n';
 				break;
 			case AND:
+				cc << "\t%"<<numRegister++<<" = and i32 %"<<reg1<<", %"<<reg2<<'\n';
+				cc << "\t%"<<numRegister++<<" = icmp ne i32 %"<<numRegister-2<<", 0"<<'\n';
+				break;
+			case LOGICAL_OR:
+				cc << "\t%"<<numRegister++<<" = or i32 %"<<reg1<<", %"<<reg2<<'\n';
+				cc << "\t%"<<numRegister++<<" = icmp ne i32 %"<<numRegister-2<<", 0"<<'\n';
+				break;
+			case LOGICAL_AND:
 				cc << "\t%"<<numRegister++<<" = and i32 %"<<reg1<<", %"<<reg2<<'\n';
 				cc << "\t%"<<numRegister++<<" = icmp ne i32 %"<<numRegister-2<<", 0"<<'\n';
 				break;
@@ -530,6 +538,7 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 			}
 		}
 		cc << "\tret "<<ret_type<<" %" << (numRegister-1) << '\n';
+		numRegister++;
 		return t;
 	}
 	if(p->symbol == DECLARATION){
