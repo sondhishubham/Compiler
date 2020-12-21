@@ -32,6 +32,7 @@ void printStack();
 void printEntry(binding);
 
 
+int branchNum;
 int numRegister;
 binding* getVaribleInfo(char*);
 void printGlobalDeclaration(NODE*, bool);
@@ -66,6 +67,7 @@ main(int argc, char **argv)
   	printf("retv = %d\n", ans);
   	cc.open("cc.ll");
   	initialize_stack();
+  	branchNum = 0;
   	cgen(abstract_syntax_tree, true, "", Function, 0);
   	printStack();
   	exit(0);
@@ -300,6 +302,35 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 		return reg->type;
 	}
 	if(p->symbol == IFTHEN){
+		p->bp = p->const_bp;
+		SYMBOL_TYPE reg =  cgen(p->bp++, global, ret_type, Bool_type, numPointer);
+		cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
+		cc << "\tbr i1 %"<<(numRegister-1)<<", label %true_case"<<branchNum<<", label %false_case"<<branchNum<<'\n';
+		cc << "\ntrue_case"<<branchNum<<":\n";
+		cgen(p->bp++, global, ret_type, t, numPointer);
+		if(p->bp != p->children){
+			cc << "\tbr label %move_ahead"<<branchNum<<'\n';
+			cc << "\nfalse_case"<<branchNum<<":\n";
+			cgen(p->bp++, global, ret_type, t, numPointer);
+			cc << "\nmove_ahead"<<branchNum<<":\n";
+			branchNum++;
+			return t;
+		}
+		else{
+			cc << "\tbr label %false_case"<<branchNum<<'\n';
+			cc << "\nfalse_case"<<branchNum<<":\n";
+			branchNum++;
+		}
+		return t;	
+	}
+	if(p->symbol == BLOCK){
+		p->bp = p->const_bp;
+		enterScope();
+		while(p->bp != p->children){
+			cgen(p->bp, global, ret_type, t, numPointer);
+			p->bp++;
+		}
+		exitScope();
 		return t;
 	}
 	if(p->symbol == RETURNN){
