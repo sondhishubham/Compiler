@@ -1,9 +1,13 @@
 
-char a = 'a';
-
+char pp = 1;
 
 int main(){
-	char m = 'a';
-	char k = m;
+	int a = 1;
+	int b = 0;
+	_Bool c = 1;
+	_Bool mm = b > c;
+	int lll = mm + 3;
 }
+
+
 

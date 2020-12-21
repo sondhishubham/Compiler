@@ -193,18 +193,18 @@ conditional_expression
 	;
 
 assignment_expression
-	: conditional_expression                                                    {$$ = $1;}
-	| unary_expression '=' assignment_expression                				{$$ = createBinaryNode(ASSIGN, $1, $3);}
-	| unary_expression MUL_ASSIGN assignment_expression							{$$ = createBinaryNode(MUL_ASSIGNN, $1, $3);}
-	| unary_expression DIV_ASSIGN assignment_expression							{$$ = createBinaryNode(DIV_ASSIGNN, $1, $3);}
-	| unary_expression MOD_ASSIGN assignment_expression							{$$ = createBinaryNode(MOD_ASSIGNN, $1, $3);}
-	| unary_expression ADD_ASSIGN assignment_expression							{$$ = createBinaryNode(ADD_ASSIGNN, $1, $3);}
-	| unary_expression SUB_ASSIGN assignment_expression							{$$ = createBinaryNode(SUB_ASSIGNN, $1, $3);}
-	| unary_expression LEFT_ASSIGN assignment_expression						{$$ = createBinaryNode(LEFT_ASSIGNN, $1, $3);}
-	| unary_expression RIGHT_ASSIGN assignment_expression						{$$ = createBinaryNode(RIGHT_ASSIGNN, $1, $3);}		
-	| unary_expression AND_ASSIGN assignment_expression							{$$ = createBinaryNode(AND_ASSIGNN, $1, $3);}	
-	| unary_expression XOR_ASSIGN assignment_expression							{$$ = createBinaryNode(XOR_ASSIGNN, $1, $3);}	
-	| unary_expression OR_ASSIGN assignment_expression							{$$ = createBinaryNode(OR_ASSIGNN, $1, $3);}	
+	: conditional_expression                                                    	{$$ = $1;}
+	| primary_expression '=' assignment_expression                					{$$ = createBinaryNode(ASSIGN, $1, $3);}
+	| primary_expression MUL_ASSIGN assignment_expression							{$$ = createBinaryNode(MUL_ASSIGNN, $1, $3);}
+	| primary_expression DIV_ASSIGN assignment_expression							{$$ = createBinaryNode(DIV_ASSIGNN, $1, $3);}
+	| primary_expression MOD_ASSIGN assignment_expression							{$$ = createBinaryNode(MOD_ASSIGNN, $1, $3);}
+	| primary_expression ADD_ASSIGN assignment_expression							{$$ = createBinaryNode(ADD_ASSIGNN, $1, $3);}
+	| primary_expression SUB_ASSIGN assignment_expression							{$$ = createBinaryNode(SUB_ASSIGNN, $1, $3);}
+	| primary_expression LEFT_ASSIGN assignment_expression							{$$ = createBinaryNode(LEFT_ASSIGNN, $1, $3);}
+	| primary_expression RIGHT_ASSIGN assignment_expression							{$$ = createBinaryNode(RIGHT_ASSIGNN, $1, $3);}		
+	| primary_expression AND_ASSIGN assignment_expression							{$$ = createBinaryNode(AND_ASSIGNN, $1, $3);}	
+	| primary_expression XOR_ASSIGN assignment_expression							{$$ = createBinaryNode(XOR_ASSIGNN, $1, $3);}	
+	| primary_expression OR_ASSIGN assignment_expression							{$$ = createBinaryNode(OR_ASSIGNN, $1, $3);}	
 	;
 
 expression
