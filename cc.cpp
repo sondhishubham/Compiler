@@ -31,7 +31,6 @@ void increaseStackSize();
 void printStack();
 void printEntry(binding);
 
-
 int branchNum;
 int numRegister;
 binding* getVaribleInfo(char*);
@@ -59,21 +58,24 @@ main(int argc, char **argv)
   assert(yyin);
   int ret = yyparse();
 //  printTree(abstract_syntax_tree); cout << '\n';
-  if(ret == 0){
+	if(ret != 0){
+  		printf("retv = %d\n", ret);
+  		exit(0);
+	}
   	initialize_stack();
    	int ans = check_semantics(abstract_syntax_tree);
  	exitScope();
  	free(bp);
-  	printf("retv = %d\n", ans);
+ 	if(ans != 0){
+  		printf("retv = %d\n", ans);
+  		exit(0);
+	}
   	cc.open("cc.ll");
   	initialize_stack();
   	branchNum = 0;
   	cgen(abstract_syntax_tree, true, "", Function, 0);
-  	printStack();
+  	exitScope();
   	exit(0);
-  }
-  printf("retv = %d\n", ret);
-  exit(0);
 }
 
 															// Numregister is the next value and numregister-1 is the last used register.
@@ -299,11 +301,39 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 			cc <<"\t%"<<numRegister++<<" = "<<"load "<<type<<", "<<type<<"* @"<<reg->identifier<<align;
 		else
 			cc <<"\t%"<<numRegister++<<" = "<<"load "<<type<<", "<<type<<"* %"<<reg->scope_size<<align;
-		return reg->type;
+		SYMBOL_TYPE expected = t;
+		SYMBOL_TYPE recieved = reg->type;
+		if(recieved == Character_type){
+			if(expected == Integer_type)
+				cc << "\t%"<<(numRegister++)<<" = sext i8 %"<<(numRegister-2)<<" to i32\n";
+			else if(expected == Bool_type){
+				cc << "\t%"<<(numRegister++)<<" = icmp ne i8 %"<<(numRegister-2)<<", 0\n";
+  				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
+			}
+		}
+		else if(recieved == Integer_type){
+			if(expected == Character_type)
+				cc << "\t%"<<(numRegister++)<<" = trunc i32 %"<<(numRegister-2)<<" to i8\n";
+			else if(expected == Bool_type){
+				cc << "\t%"<<(numRegister++)<<" = icmp ne i32 %"<<(numRegister-2)<<", 0\n";
+  				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
+  			}
+		}
+		else if(recieved == Bool_type){
+			if(expected == Integer_type){
+				cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
+  				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i32\n";
+			}
+			else if(expected == Character_type || expected == Bool_type){
+				cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
+  				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
+			}
+		}		
+		return t;
 	}
 	if(p->symbol == IFTHEN){
 		p->bp = p->const_bp;
-		SYMBOL_TYPE reg =  cgen(p->bp++, global, ret_type, Bool_type, numPointer);
+		SYMBOL_TYPE reg =  cgen(p->bp++, global, "i8", Bool_type, 0);
 		cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
 		cc << "\tbr i1 %"<<(numRegister-1)<<", label %true_case"<<branchNum<<", label %false_case"<<branchNum<<'\n';
 		cc << "\ntrue_case"<<branchNum<<":\n";
@@ -322,6 +352,124 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 			branchNum++;
 		}
 		return t;	
+	}
+	if(p->symbol == WHILEE){
+		p->bp = p->const_bp;
+		cc << "\tbr label %cond"<<branchNum<<'\n';
+		cc << "\ncond"<<branchNum<<":\n";
+		SYMBOL_TYPE reg =  cgen(p->bp++, global, "i8", Bool_type, 0);
+		cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
+		cc << "\tbr i1 %"<<(numRegister-1)<<", label %true_case"<<branchNum<<", label %false_case"<<branchNum<<'\n';
+		cc << "\ntrue_case"<<branchNum<<":\n";
+		cgen(p->bp++, global, ret_type, t, numPointer);
+		cc << "\tbr label %cond"<<branchNum<<'\n';
+		cc << "\nfalse_case"<<branchNum<<":\n";
+		branchNum++;
+		return t;
+	}
+	if(p->symbol == FUNC_CALL){
+		p->bp = p->const_bp;
+		NODE* ident = p->bp++;
+		char* identifier = (char*)ident->value;
+		binding* reg = getVaribleInfo(identifier);
+		SYMBOL_TYPE* parameters = reg->par_types;
+		SYMBOL_TYPE* pp 		= parameters;
+		int* par_pointer		= reg->par_pointers;
+		bool hasEllipse = false;
+		for(int i(0);i<reg->numPar;i++){
+			if(*pp == Ellipsis_type)
+				hasEllipse = true;
+			pp++;
+		}
+		SYMBOL_TYPE retType = reg->ret_type;
+		int pointers = reg->numPointer;
+		string pointer = "";
+		while(pointers > 0){
+			pointer = pointer + "*";
+			pointers--;
+		}
+		string param = "";
+		if(!hasEllipse){
+			if(p->bp == p->children){
+				if(reg->numPar > 0){
+					cout << "Fucntion "<<identifier<<" expects more arguments\n";
+					exit(0);
+				}
+				param = "()\n";
+				return t;
+			}
+			else{
+				param = "(";
+				NODE* args = p->bp++;
+				args->bp = args->const_bp;
+				int numPoint(0);
+				int totalArguments = args->children - args->bp;
+				if(totalArguments != reg->numPar){
+					cout << "Fucntion "<<identifier<<" expects different number of arguments\n";
+					exit(0);
+				}
+				for(int i(0);i<totalArguments;i++){
+					if( i != 0) param = param + ", ";
+					numPoint = *(par_pointer++);
+					SYMBOL_TYPE expected = *(parameters++);
+					SYMBOL_TYPE recieved = cgen(args->bp++, global, ret_type, t, numPointer);
+					if(recieved == Character_type){
+						if(expected == Integer_type)
+							cc << "\t%"<<(numRegister++)<<" = sext i8 %"<<(numRegister-2)<<" to i32\n";
+						else if(expected == Bool_type){
+							cc << "\t%"<<(numRegister++)<<" = icmp ne i8 %"<<(numRegister-2)<<", 0\n";
+			  				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
+						}
+					}
+					else if(recieved == Integer_type){
+						if(expected == Character_type)
+							cc << "\t%"<<(numRegister++)<<" = trunc i32 %"<<(numRegister-2)<<" to i8\n";
+						else if(expected == Bool_type){
+							cc << "\t%"<<(numRegister++)<<" = icmp ne i32 %"<<(numRegister-2)<<", 0\n";
+			  				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
+			  			}
+					}
+					else if(recieved == Bool_type){
+						if(expected == Integer_type){
+							cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
+			  				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i32\n";
+						}
+						else if(expected == Character_type || expected == Bool_type){
+							cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
+			  				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
+						}
+					}
+					string type, ptr;	
+					switch(expected){
+						case Integer_type:
+							type = "i32";
+							break;
+						case Character_type:
+							type = "i8";
+							break;
+						case Bool_type:
+							type = "i8";
+							break;
+					}
+					while(numPoint>0){
+						ptr = ptr+'*';
+						numPoint--;
+					}
+					param = param + type + ptr + " %"+ to_string(numRegister-1);
+				}
+				param = param + ")\n";
+			}
+			if(retType == Void_type){
+				cc << "\tcall void @"<<identifier<<param;
+			}
+			else if(retType == Integer_type){
+	  			cc <<"\t%"<<(numRegister++)<<" = call i32"+pointer+" @"<<identifier<<param;
+			}
+			else if(retType == Character_type || retType == Bool_type){
+	  			cc <<"\t%"<<(numRegister++)<<" = call i8"+pointer+" @"<<identifier<<param;
+			}
+		}
+		return t;
 	}
 	if(p->symbol == BLOCK){
 		p->bp = p->const_bp;
@@ -345,7 +493,7 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 				cc << "\tret "<< ret_type << " 0\n";
 			}
 			else if(t == Bool_type){
-				cc << "\tret "<< ret_type << " false\n";
+				cc << "\tret "<< ret_type << " 0\n";
 			}
 			else if(t == Void_type){
 				cc << "\tret void\n";
@@ -353,7 +501,34 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 			return t;
 		}
 		p->bp = p->const_bp;
-		cgen(p->bp, false, ret_type, t,numPointer);
+		SYMBOL_TYPE recieved = cgen(p->bp, false, ret_type, t,numPointer);
+		SYMBOL_TYPE expected = t;
+		if(recieved == Character_type){
+			if(expected == Integer_type)
+				cc << "\t%"<<(numRegister++)<<" = sext i8 %"<<(numRegister-2)<<" to i32\n";
+			else if(expected == Bool_type){
+				cc << "\t%"<<(numRegister++)<<" = icmp ne i8 %"<<(numRegister-2)<<", 0\n";
+				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
+			}
+		}
+		else if(recieved == Integer_type){
+			if(expected == Character_type)
+				cc << "\t%"<<(numRegister++)<<" = trunc i32 %"<<(numRegister-2)<<" to i8\n";
+			else if(expected == Bool_type){
+				cc << "\t%"<<(numRegister++)<<" = icmp ne i32 %"<<(numRegister-2)<<", 0\n";
+				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
+			}
+		}
+		else if(recieved == Bool_type){
+			if(expected == Integer_type){
+				cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
+				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i32\n";
+			}
+			else if(expected == Character_type || expected == Bool_type){
+				cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
+				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
+			}
+		}
 		cc << "\tret "<<ret_type<<" %" << (numRegister-1) << '\n';
 		return t;
 	}
@@ -483,6 +658,7 @@ void printDeclaration(NODE* p){
 void printFuncDefinition(NODE* p){
 	numRegister = 0;
 	p->bp = p->const_bp;
+	int totalparameters(0);
 	NODE* declaration_specifier		= p->bp++; declaration_specifier->bp = declaration_specifier->const_bp;
 	NODE* declarator 				= p->bp++; declarator->bp = declarator->const_bp;
 	NODE* function_body 			= p->bp++; function_body->bp = function_body->const_bp;
@@ -514,20 +690,35 @@ void printFuncDefinition(NODE* p){
 		exit(0);
 	}
 	binding* entry = new binding(identifier, Function, -1); // Value -1 means that the variable is global!
-	entry->numPointer = num_ptr;
+	entry->numPointer 	= num_ptr;
+	entry->ret_type		= ret_type;
+	binding* func 		= symbol_table;
 	if(symbol_table-bp == sizeAssigned)
 		increaseStackSize();
 	*(symbol_table++) = *entry;
 	numEntries++;
+	SYMBOL_TYPE* par_list 		= NULL;
+	int*		 pointer_par	= NULL;
+	int*		 pointer_base	= NULL;
+	SYMBOL_TYPE* base			= NULL;
 	enterScope();
+	string allocation = "";
 	if(declarator->bp == declarator->children){
 		parameters = "(){\n";
+		numRegister++;
 	}
 	else{
 		parameters = "(";
 		NODE* par = declarator->bp++;
 		par->bp = par->const_bp;
+		int nChildren = par->children - par->bp;
+		par_list = (SYMBOL_TYPE*)malloc(nChildren*sizeof(SYMBOL_TYPE));
+		pointer_par = (int*)malloc(nChildren*sizeof(int));
+		pointer_base = pointer_par;
+		base = par_list;
+		int num_reg_for_parameters = (par->children - par->bp)+1;
 		while(par->bp != par->children){
+			totalparameters++;
 			if(par->bp != par->const_bp) parameters = parameters + ", ";
 				string par_type = "", par_pointer = "";
 				SYMBOL_TYPE t, specific_t; int num_pointer(0);
@@ -535,34 +726,40 @@ void printFuncDefinition(NODE* p){
 				if(curr_par->symbol == DECLARATION){
 					NODE* declaration_specifier = curr_par->bp++; declaration_specifier->bp = declaration_specifier->const_bp;
 					NODE* declarator = curr_par->bp++; declarator->bp = declarator->const_bp;
+					string specific_align="";
 					while(declaration_specifier->symbol == CONSTT){
 						declaration_specifier = declaration_specifier->const_bp;
 					}
 					switch(declaration_specifier->symbol){
 						case TYPE_INT:
-							par_type = "i32"; t = Integer_type;
+							par_type = "i32"; t = Integer_type; specific_align = ", align 4\n";
 							break;
 						case TYPE_CHAR:
-							par_type = "i8"; t = Character_type;
+							par_type = "i8"; t = Character_type; specific_align = ", align 1\n";
 							break;
 						case TYPE_BOOL:
-							par_type = "i8"; t = Bool_type;
+							par_type = "i8"; t = Bool_type; specific_align = ", align 1\n";
 							break;
 					}
+					*(par_list++) = t;
 					specific_t = t;
 					while(declarator->symbol == POINTER){
 						declarator = declarator->bp;
 						par_pointer = par_pointer + "*";
 						specific_t = Pointer_type;
 						num_pointer++;
+						specific_align = ", align 8\n";
 					}
+					*(pointer_par++) = num_pointer;
 					if(declarator->symbol == FUNC_DECLARATOR){
 						cout << "Fucntion declared with a function as one of its parameters\n";
 						exit(0);
 					}
+					allocation = allocation + "\t%" + to_string(num_reg_for_parameters) + " = alloca "+par_type+par_pointer+specific_align;
+					allocation = allocation + "\tstore "+par_type+par_pointer+" %"+to_string(numRegister)+", "+par_type+par_pointer+"* %"+to_string(num_reg_for_parameters) + specific_align;
 					char* par_identifier = (char*)declarator->value;
-					binding* entry = new binding(par_identifier, t, numRegister);
-					entry->numPointer = num_pointer;
+					binding* entry = new binding(par_identifier, t, num_reg_for_parameters);
+					entry->numPointer 	= num_pointer;
 					if(symbol_table-bp == sizeAssigned)
 						increaseStackSize();
 					*(symbol_table++) = *entry;
@@ -570,14 +767,24 @@ void printFuncDefinition(NODE* p){
 					string reg = to_string(numRegister);
 					parameters = parameters + par_type + par_pointer + " %" + reg;
 				}
+				if(curr_par->symbol == ELLIPSISS){
+					parameters = parameters + "...";
+					*(par_list++) = Ellipsis_type;
+					*(pointer_par++) = 0;
+				}
+			num_reg_for_parameters++;				
 			numRegister++;
 			par->bp++;
 		}
+		numRegister = num_reg_for_parameters;
 		parameters = parameters + "){\n";
 	}
-	numRegister++;
+	func->par_types 	= base;
+	func->par_pointers 	= pointer_base;
+	func->numPar		= totalparameters;
 	bool isReturnAbsent = true;
 	cc << "\ndefine"+ type + pointer + " @"<<identifier<<parameters;
+	cc << allocation;
 	while (function_body->bp != function_body->children){
 		if(function_body->bp->symbol == RETURNN) isReturnAbsent = false;
 		cgen(function_body->bp, false,type+pointer,ret_type,num_ptr);
@@ -597,6 +804,7 @@ void printFuncDefinition(NODE* p){
 
 void printGlobalDeclaration(NODE* p, bool global){
 	bool isInitiazlizer = false;
+	int totalparameters(0);
 	bool isFunc = false;
 	string isConstant = "global";
 	p->bp = p->const_bp;
@@ -606,6 +814,8 @@ void printGlobalDeclaration(NODE* p, bool global){
 		isConstant = "constant";										//Its const in case of global vairables if variable is const otherwise its global.
 		declaration_specifiers = declaration_specifiers->const_bp;
 	}
+	SYMBOL_TYPE* par_list = NULL, *base = NULL;
+	int* pointer_par	= NULL, *pointer_base = NULL;
 	char* identifier;
 	SYMBOL_TYPE t, specific_t; int num_pointer(0);
 	string type = "", align = "", specific_align = "", pointer = "", initializer = "", parameters = "";
@@ -619,6 +829,8 @@ void printGlobalDeclaration(NODE* p, bool global){
 		case TYPE_BOOL:
 			type = " i8"; align = ", align 1"; specific_align = align; t = Bool_type;
 			break;
+		case TYPE_VOID:
+			type = ""; t = Void_type;
 	}
 	specific_t = t;
 	declaration_list->bp = declaration_list->const_bp;
@@ -649,7 +861,13 @@ void printGlobalDeclaration(NODE* p, bool global){
 				parameters = "(";
 				NODE* par = k->bp++;
 				par->bp = par->const_bp;
+				int nPar = par->children - par->bp;
+				par_list = (SYMBOL_TYPE*)malloc(nPar*sizeof(SYMBOL_TYPE));
+				pointer_par = (int*)malloc(nPar*(sizeof(int)));
+				pointer_base= pointer_par;
+				base 	 = par_list;
 				while(par->bp != par->children){
+					totalparameters++;
 					if(par->bp != par->const_bp) parameters = parameters + ", ";
 					string par_type = "", par_pointer = "";
 					NODE* curr_par = par->bp; curr_par->bp = curr_par->const_bp;
@@ -661,24 +879,32 @@ void printGlobalDeclaration(NODE* p, bool global){
 						}
 						switch(declaration_specifiers->symbol){
 							case TYPE_INT:
-								par_type = "i32";
+								par_type = "i32";*(par_list++) = Integer_type;
 								break;
 							case TYPE_CHAR:
-								par_type = "i8";
+								par_type = "i8"; *(par_list++) = Character_type;
 								break;
 							case TYPE_BOOL:
-								par_type = "i8";
+								par_type = "i8"; *(par_list++) = Bool_type;
 								break;
 						}
+						int i(0);
 						while(declarator->symbol == POINTER){
 							declarator = declarator->bp;
 							par_pointer = par_pointer + "*";
+							i++;
 						}
+						*(pointer_par++) = i;
 						if(declarator->symbol == FUNC_DECLARATOR){
 							cout << "Fucntion declared with a function as one of its parameters\n";
 							exit(0);
 						}
 						parameters = parameters + par_type + par_pointer;
+					}
+					if(curr_par->symbol == ELLIPSISS){
+						parameters = parameters + "...";
+						*(par_list++) = Ellipsis_type;
+						*(pointer_par++) = 0;
 					}
 					par->bp++;
 				}
@@ -708,7 +934,13 @@ void printGlobalDeclaration(NODE* p, bool global){
 				parameters = "(";
 				NODE* par = parent->bp++;
 				par->bp = par->const_bp;
+				int nPar = par->children - par->bp;
+				par_list = (SYMBOL_TYPE*)malloc(nPar*sizeof(SYMBOL_TYPE));
+				pointer_par = (int*)malloc(nPar*(sizeof(int)));
+				pointer_base= pointer_par;
+				base 	 = par_list;
 				while(par->bp != par->children){
+					totalparameters++;
 					if(par->bp != par->const_bp) parameters = parameters + ", ";
 					string par_type = "", par_pointer = "";
 					NODE* curr_par = par->bp; curr_par->bp = curr_par->const_bp;
@@ -720,24 +952,32 @@ void printGlobalDeclaration(NODE* p, bool global){
 						}
 						switch(declaration_specifiers->symbol){
 							case TYPE_INT:
-								par_type = "i32";
+								par_type = "i32";*(par_list++) = Integer_type;
 								break;
 							case TYPE_CHAR:
-								par_type = "i8";
+								par_type = "i8"; *(par_list++) = Character_type;
 								break;
 							case TYPE_BOOL:
-								par_type = "i8";
+								par_type = "i8"; *(par_list++) = Bool_type;
 								break;
 						}
+						int i(0);
 						while(declarator->symbol == POINTER){
 							declarator = declarator->bp;
 							par_pointer = par_pointer + "*";
+							i++;
 						}
+						*(pointer_par++) = i;
 						if(declarator->symbol == FUNC_DECLARATOR){
 							cout << "Fucntion declared with a function as one of its parameters\n";
 							exit(0);
 						}
 						parameters = parameters + par_type + par_pointer;
+					}
+					if(curr_par->symbol == ELLIPSISS){
+						parameters = parameters + "...";
+						*(par_list++) = Ellipsis_type;
+						*(pointer_par++)=0;
 					}
 					par->bp++;
 				}
@@ -752,6 +992,11 @@ void printGlobalDeclaration(NODE* p, bool global){
 					exit(0);
 				}
 				binding* entry = new binding(identifier, Function, -1); // Value -1 means that the variable is global!
+				entry->numPar		= totalparameters;
+				entry->numPointer 	= num_pointer;
+				entry->ret_type		= t;
+				entry->par_types	= base;
+				entry->par_pointers	= pointer_base;
 				if(symbol_table-bp == sizeAssigned)
 					increaseStackSize();
 				*(symbol_table++) = *entry;
@@ -759,7 +1004,7 @@ void printGlobalDeclaration(NODE* p, bool global){
 				cc << "\ndeclare"+ type + pointer + " @"<<identifier<<parameters + "\n";
 			}
 			else{
-				binding* entry = new binding(identifier, specific_t, -1);
+				binding* entry = new binding(identifier, t, -1);
 				entry->numPointer = num_pointer;
 				if(symbol_table-bp == sizeAssigned)
 					increaseStackSize();

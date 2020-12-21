@@ -1,16 +1,13 @@
 
-char pp = 1;
 
-int main(){
-	int a = 10;
-	_Bool m = 3;
-	if(a > m){
-		int mm = 51;
-		char kk = mm + a;
-		int llvm = mm + kk;
-		a = llvm;
+int sum(int a, int b){
+	return a + b;
+}
+int main(){	
+	int m = 'a';
+	if(100){
+		int k1 = sum(3,4);
 	}
 }
-
 
 

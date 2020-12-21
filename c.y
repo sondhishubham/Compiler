@@ -89,7 +89,7 @@ postfix_expression
 	: primary_expression												{$$ = $1;}
 //	| postfix_expression '[' expression ']'		
 	| postfix_expression '(' ')'										{$$ = createUnaryNode(FUNC_CALL, $1);}
-	| postfix_expression '(' argument_expression_list ')'				{$$ = createUnaryNode(FUNC_CALL, $1);NODE* m = createUnaryNode(ARGUMENTS, $3);addChild($$,m);}
+	| postfix_expression '(' argument_expression_list ')'				{$$ = createBinaryNode(FUNC_CALL, $1, $3);}
 //	| postfix_expression '.' IDENTIFIER
 //	| postfix_expression PTR_OP IDENTIFIER
 //	| postfix_expression INC_OP

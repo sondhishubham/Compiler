@@ -1623,7 +1623,7 @@ yyreduce:
 
   case 10:
 #line 92 "c.y"
-                                                                                        {(yyval.node_ptr) = createUnaryNode(FUNC_CALL, (yyvsp[-3].node_ptr));NODE* m = createUnaryNode(ARGUMENTS, (yyvsp[-1].node_ptr));addChild((yyval.node_ptr),m);}
+                                                                                        {(yyval.node_ptr) = createBinaryNode(FUNC_CALL, (yyvsp[-3].node_ptr), (yyvsp[-1].node_ptr));}
 #line 1628 "c.tab.cpp"
     break;
 
