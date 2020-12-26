@@ -119,34 +119,7 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 			num_pointer--;
 			align = ", align 8\n";
 		}
-		SYMBOL_TYPE k = cgen(rvalue, global,type,reg->type,num_ptr);
-		if(k == Character_type){
-			if(reg->type == Integer_type)
-				cc << "\t%"<<(numRegister++)<<" = sext i8 %"<<(numRegister-2)<<" to i32\n";
-			else if(reg->type == Bool_type){
-				cc << "\t%"<<(numRegister++)<<" = icmp ne i8 %"<<(numRegister-2)<<", 0\n";
-  				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
-			}
-		}
-		else if(k == Integer_type){
-			if(reg->type == Character_type)
-				cc << "\t%"<<(numRegister++)<<" = trunc i32 %"<<(numRegister-2)<<" to i8\n";
-			else if(reg->type == Bool_type){
-				cc << "\t%"<<(numRegister++)<<" = icmp ne i32 %"<<(numRegister-2)<<", 0\n";
-  				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
-  			}
-		}
-		else if(k == Bool_type){
-			if(reg->type == Integer_type){
-				cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
-  				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i32\n";
-			}
-			else if(reg->type == Character_type || reg->type == Bool_type){
-				cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
-  				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
-			}
-		}
-		
+		SYMBOL_TYPE k = cgen(rvalue, global,type,reg->type ,num_ptr);
 		if(reg->scope_size == -1)
 			cc << "\tstore "<<type<<" %"<<(numRegister-1)<<", "<<type<<"* @"<< reg->identifier <<align;
 		else
@@ -156,28 +129,10 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 	if(p->symbol == PLUS || p->symbol == SUB || p->symbol == MULT || p->symbol == DIVIDE || p->symbol == REMAINDER || p->symbol == LEFT_SHIFT || p->symbol == RIGHT_SHIFT){
 		p->bp = p->const_bp;
 		int reg1, reg2;
-		SYMBOL_TYPE arg1 = cgen(p->bp++, global, ret_type, t, numPointer);
+		SYMBOL_TYPE arg1 = cgen(p->bp++, global, ret_type, Integer_type, numPointer);
 		reg1 = numRegister-1;
-		if(arg1 == Character_type){
-			cc <<"\t%"<<(numRegister++)<<" = sext i8 %"<<(numRegister-2)<<" to i32\n";
-			reg1 = (numRegister-1);
-		}
-		else if(arg1 == Bool_type){
-			cc <<"\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
-			cc <<"\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i32\n";
-			reg1 = (numRegister-1);
-		}
-		SYMBOL_TYPE arg2 = cgen(p->bp++, global, ret_type, t, numPointer);
+		SYMBOL_TYPE arg2 = cgen(p->bp++, global, ret_type, Integer_type, numPointer);
 		reg2 = numRegister - 1;
-		if(arg2 == Character_type){
-			cc <<"\t%"<<(numRegister++)<<" = sext i8 %"<<(numRegister-2)<<" to i32\n";
-			reg2 = (numRegister-1);
-		}
-		else if(arg2 == Bool_type){
-			cc <<"\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
-			cc <<"\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i32\n";
-			reg2 = (numRegister-1);
-		}
 		switch(p->symbol){
 			case PLUS:
 				cc << "\t%"<<numRegister++<<" = add nsw i32 %"<<reg1<<", %"<<reg2<<'\n';
@@ -212,28 +167,10 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 	if(p->symbol == LESS_THAN || p->symbol == GREATER_THAN || p->symbol == LESS_THAN_EQUAL_TO || p->symbol == GREATER_THAN_EQUAL_TO || p->symbol == EQUAL_TO || p->symbol == NOT_EQUAL_TO || p->symbol == EXCLUSIVE_OR || p->symbol == INCLUSIVE_OR || p->symbol == AND || p->symbol == LOGICAL_AND || p->symbol == LOGICAL_OR){
 		p->bp = p->const_bp;
 		int reg1, reg2;
-		SYMBOL_TYPE arg1 = cgen(p->bp++, global, ret_type, t, numPointer);
+		SYMBOL_TYPE arg1 = cgen(p->bp++, global, ret_type, Integer_type, numPointer);
 		reg1 = numRegister-1;
-		if(arg1 == Character_type){
-			cc <<"\t%"<<(numRegister++)<<" = sext i8 %"<<(numRegister-2)<<" to i32\n";
-			reg1 = (numRegister-1);
-		}
-		else if(arg1 == Bool_type){
-			cc <<"\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
-			cc <<"\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i32\n";
-			reg1 = (numRegister-1);
-		}
-		SYMBOL_TYPE arg2 = cgen(p->bp++, global, ret_type, t, numPointer);
+		SYMBOL_TYPE arg2 = cgen(p->bp++, global, ret_type, Integer_type, numPointer);
 		reg2 = numRegister - 1;
-		if(arg2 == Character_type){
-			cc <<"\t%"<<(numRegister++)<<" = sext i8 %"<<(numRegister-2)<<" to i32\n";
-			reg2 = (numRegister-1);
-		}
-		else if(arg2 == Bool_type){
-			cc <<"\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
-			cc <<"\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i32\n";
-			reg2 = (numRegister-1);
-		}
 		switch(p->symbol){
 			case LESS_THAN:
 				cc << "\t%"<<numRegister++<<" = icmp slt i32 %"<<reg1<<", %"<<reg2<<'\n';
@@ -262,14 +199,6 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 				cc << "\t%"<<numRegister++<<" = icmp ne i32 %"<<numRegister-2<<", 0"<<'\n';
 				break;
 			case AND:
-				cc << "\t%"<<numRegister++<<" = and i32 %"<<reg1<<", %"<<reg2<<'\n';
-				cc << "\t%"<<numRegister++<<" = icmp ne i32 %"<<numRegister-2<<", 0"<<'\n';
-				break;
-			case LOGICAL_OR:
-				cc << "\t%"<<numRegister++<<" = or i32 %"<<reg1<<", %"<<reg2<<'\n';
-				cc << "\t%"<<numRegister++<<" = icmp ne i32 %"<<numRegister-2<<", 0"<<'\n';
-				break;
-			case LOGICAL_AND:
 				cc << "\t%"<<numRegister++<<" = and i32 %"<<reg1<<", %"<<reg2<<'\n';
 				cc << "\t%"<<numRegister++<<" = icmp ne i32 %"<<numRegister-2<<", 0"<<'\n';
 				break;
@@ -419,50 +348,26 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 				for(int i(0);i<totalArguments;i++){
 					if( i != 0) param = param + ", ";
 					numPoint = *(par_pointer++);
-					SYMBOL_TYPE expected = *(parameters++);
-					SYMBOL_TYPE recieved = cgen(args->bp++, global, ret_type, t, numPointer);
-					if(recieved == Character_type){
-						if(expected == Integer_type)
-							cc << "\t%"<<(numRegister++)<<" = sext i8 %"<<(numRegister-2)<<" to i32\n";
-						else if(expected == Bool_type){
-							cc << "\t%"<<(numRegister++)<<" = icmp ne i8 %"<<(numRegister-2)<<", 0\n";
-			  				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
-						}
-					}
-					else if(recieved == Integer_type){
-						if(expected == Character_type)
-							cc << "\t%"<<(numRegister++)<<" = trunc i32 %"<<(numRegister-2)<<" to i8\n";
-						else if(expected == Bool_type){
-							cc << "\t%"<<(numRegister++)<<" = icmp ne i32 %"<<(numRegister-2)<<", 0\n";
-			  				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
-			  			}
-					}
-					else if(recieved == Bool_type){
-						if(expected == Integer_type){
-							cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
-			  				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i32\n";
-						}
-						else if(expected == Character_type || expected == Bool_type){
-							cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
-			  				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
-						}
-					}
-					string type, ptr;	
+					SYMBOL_TYPE expected = *(parameters++);	
+					string type, ptr, type_ex;
 					switch(expected){
 						case Integer_type:
-							type = "i32";
+							type = "i32"; type_ex = "i32";
 							break;
 						case Character_type:
-							type = "i8";
+							type = "i8";type_ex = "i8";
 							break;
 						case Bool_type:
-							type = "i8";
+							type = "i1";type_ex = "i8";
 							break;
 					}
 					while(numPoint>0){
 						ptr = ptr+'*';
 						numPoint--;
 					}
+					cgen(args->bp++, global, type_ex+pointer, expected, numPoint);
+					if(expected == Bool_type)
+						cc<<"\t%"<<numRegister++<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
 					param = param + type + ptr + " %"+ to_string(numRegister-1);
 				}
 				param = param + ")\n";
@@ -473,11 +378,15 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 			else if(retType == Integer_type){
 	  			cc <<"\t%"<<(numRegister++)<<" = call i32"+pointer+" @"<<identifier<<param;
 			}
-			else if(retType == Character_type || retType == Bool_type){
+			else if(retType == Character_type){
 	  			cc <<"\t%"<<(numRegister++)<<" = call i8"+pointer+" @"<<identifier<<param;
 			}
+			else if(retType == Bool_type){
+	  			cc <<"\t%"<<(numRegister++)<<" = call i1"+pointer+" @"<<identifier<<param;
+	  			cc <<"\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
+			}
 		}
-		return t;
+		return retType;
 	}
 	if(p->symbol == BLOCK){
 		p->bp = p->const_bp;
@@ -501,7 +410,7 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 				cc << "\tret "<< ret_type << " 0\n";
 			}
 			else if(t == Bool_type){
-				cc << "\tret "<< ret_type << " 0\n";
+				cc << "\tret "<< ret_type << " false\n";
 			}
 			else if(t == Void_type){
 				cc << "\tret void\n";
@@ -509,33 +418,9 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 			return t;
 		}
 		p->bp = p->const_bp;
-		SYMBOL_TYPE recieved = cgen(p->bp, false, ret_type, t,numPointer);
-		SYMBOL_TYPE expected = t;
-		if(recieved == Character_type){
-			if(expected == Integer_type)
-				cc << "\t%"<<(numRegister++)<<" = sext i8 %"<<(numRegister-2)<<" to i32\n";
-			else if(expected == Bool_type){
-				cc << "\t%"<<(numRegister++)<<" = icmp ne i8 %"<<(numRegister-2)<<", 0\n";
-				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
-			}
-		}
-		else if(recieved == Integer_type){
-			if(expected == Character_type)
-				cc << "\t%"<<(numRegister++)<<" = trunc i32 %"<<(numRegister-2)<<" to i8\n";
-			else if(expected == Bool_type){
-				cc << "\t%"<<(numRegister++)<<" = icmp ne i32 %"<<(numRegister-2)<<", 0\n";
-				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
-			}
-		}
-		else if(recieved == Bool_type){
-			if(expected == Integer_type){
-				cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
-				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i32\n";
-			}
-			else if(expected == Character_type || expected == Bool_type){
-				cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
-				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
-			}
+		cgen(p->bp, false, ret_type, t ,numPointer);
+		if(t == Bool_type){
+			cc << "\t%"<<numRegister++<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
 		}
 		cc << "\tret "<<ret_type<<" %" << (numRegister-1) << '\n';
 		numRegister++;
@@ -681,7 +566,7 @@ void printFuncDefinition(NODE* p){
 			type = " i8"; ret_type = Character_type;
 			break;
 		case TYPE_BOOL:
-			type = " i8"; ret_type = Bool_type;
+			type = " i1"; ret_type = Bool_type;
 			break;
 		case TYPE_VOID:
 			type = ""; ret_type = Void_type;
@@ -747,7 +632,7 @@ void printFuncDefinition(NODE* p){
 							par_type = "i8"; t = Character_type; specific_align = ", align 1\n";
 							break;
 						case TYPE_BOOL:
-							par_type = "i8"; t = Bool_type; specific_align = ", align 1\n";
+							par_type = "i1"; t = Bool_type; specific_align = ", align 1\n";
 							break;
 					}
 					*(par_list++) = t;
@@ -764,10 +649,18 @@ void printFuncDefinition(NODE* p){
 						cout << "Fucntion declared with a function as one of its parameters\n";
 						exit(0);
 					}
-					allocation = allocation + "\t%" + to_string(num_reg_for_parameters) + " = alloca "+par_type+par_pointer+specific_align;
-					allocation = allocation + "\tstore "+par_type+par_pointer+" %"+to_string(numRegister)+", "+par_type+par_pointer+"* %"+to_string(num_reg_for_parameters) + specific_align;
+					if(t == Bool_type){
+						allocation = allocation + "\t%" + to_string(num_reg_for_parameters++) + " = alloca "+"i8"+par_pointer+specific_align;
+						allocation = allocation + "\t%"+to_string(num_reg_for_parameters)+" = zext i1 %"+to_string(numRegister)+" to i8\n";
+						allocation = allocation + "\tstore i8"+par_pointer+" %"+to_string(num_reg_for_parameters)+", i8"+par_pointer+"* %"+to_string(num_reg_for_parameters-1) + specific_align;
+					}
+					else{
+						allocation = allocation + "\t%" + to_string(num_reg_for_parameters) + " = alloca "+par_type+par_pointer+specific_align;
+						allocation = allocation + "\tstore "+par_type+par_pointer+" %"+to_string(numRegister)+", "+par_type+par_pointer+"* %"+to_string(num_reg_for_parameters) + specific_align;
+					}
+					int regVal = (t == Bool_type)?(num_reg_for_parameters-1):(num_reg_for_parameters);
 					char* par_identifier = (char*)declarator->value;
-					binding* entry = new binding(par_identifier, t, num_reg_for_parameters);
+					binding* entry = new binding(par_identifier, t, regVal);
 					entry->numPointer 	= num_pointer;
 					if(symbol_table-bp == sizeAssigned)
 						increaseStackSize();
@@ -894,7 +787,7 @@ void printGlobalDeclaration(NODE* p, bool global){
 								par_type = "i8"; *(par_list++) = Character_type;
 								break;
 							case TYPE_BOOL:
-								par_type = "i8"; *(par_list++) = Bool_type;
+								par_type = "i1"; *(par_list++) = Bool_type;
 								break;
 						}
 						int i(0);
@@ -967,7 +860,7 @@ void printGlobalDeclaration(NODE* p, bool global){
 								par_type = "i8"; *(par_list++) = Character_type;
 								break;
 							case TYPE_BOOL:
-								par_type = "i8"; *(par_list++) = Bool_type;
+								par_type = "i1"; *(par_list++) = Bool_type;
 								break;
 						}
 						int i(0);
@@ -1010,7 +903,10 @@ void printGlobalDeclaration(NODE* p, bool global){
 					increaseStackSize();
 				*(symbol_table++) = *entry;
 				numEntries++;
-				cc << "\ndeclare"+ type + pointer + " @"<<identifier<<parameters + "\n";
+				if(t == Bool_type)
+					cc << "\ndeclare i1" + pointer + " @"<<identifier<<parameters + "\n";
+				else
+					cc << "\ndeclare"+ type + pointer + " @"<<identifier<<parameters + "\n";
 			}
 			else{
 				binding* entry = new binding(identifier, t, -1);

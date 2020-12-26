@@ -21,9 +21,9 @@ class binding{
 		int numPointer;		// Added to take care of the number of pointers in a variable. eg. int*** l, numPointer = 3
 		char* identifier;
 		SYMBOL_TYPE type;
-		SYMBOL_TYPE ret_type;
-		SYMBOL_TYPE* par_types;
-		int* par_pointers;	//The number of pointers in parameters;
+		SYMBOL_TYPE ret_type;	//The return type of functions;
+		SYMBOL_TYPE* par_types;	//The type of parameters
+		int* par_pointers;		//The number of pointers in parameters;
 		int numPar;
 		int scope_size;		//Also the register assigned to a variable;
 		binding(char* id, SYMBOL_TYPE t, int size){
