@@ -32,6 +32,7 @@ void printStack();
 void printEntry(binding);
 
 string replaceCharacters(string);
+string currBlock;
 int branchNum;
 int numRegister;
 int numWhitespace;
@@ -156,9 +157,9 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 	if(p->symbol == PLUS || p->symbol == SUB || p->symbol == MULT || p->symbol == DIVIDE || p->symbol == REMAINDER || p->symbol == LEFT_SHIFT || p->symbol == RIGHT_SHIFT){
 		p->bp = p->const_bp;
 		int reg1, reg2;
-		SYMBOL_TYPE arg1 = cgen(p->bp++, global, "i32", Integer_type, numPointer);
+		SYMBOL_TYPE arg1 = cgen(p->bp++, global, "i32", Integer_type, 0);
 		reg1 = numRegister-1;
-		SYMBOL_TYPE arg2 = cgen(p->bp++, global, "i32", Integer_type, numPointer);
+		SYMBOL_TYPE arg2 = cgen(p->bp++, global, "i32", Integer_type, 0);
 		reg2 = numRegister - 1;
 		switch(p->symbol){
 			case PLUS:
@@ -191,12 +192,12 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 		}		
 		return t;
 	}
-	if(p->symbol == LESS_THAN || p->symbol == GREATER_THAN || p->symbol == LESS_THAN_EQUAL_TO || p->symbol == GREATER_THAN_EQUAL_TO || p->symbol == EQUAL_TO || p->symbol == NOT_EQUAL_TO || p->symbol == EXCLUSIVE_OR || p->symbol == INCLUSIVE_OR || p->symbol == AND || p->symbol == LOGICAL_AND || p->symbol == LOGICAL_OR){
+	if(p->symbol == LESS_THAN || p->symbol == GREATER_THAN || p->symbol == LESS_THAN_EQUAL_TO || p->symbol == GREATER_THAN_EQUAL_TO || p->symbol == EQUAL_TO || p->symbol == NOT_EQUAL_TO || p->symbol == EXCLUSIVE_OR || p->symbol == INCLUSIVE_OR || p->symbol == AND){
 		p->bp = p->const_bp;
 		int reg1, reg2;
-		SYMBOL_TYPE arg1 = cgen(p->bp++, global, "i32", Integer_type, numPointer);
+		SYMBOL_TYPE arg1 = cgen(p->bp++, global, "i32", Integer_type, 0);
 		reg1 = numRegister-1;
-		SYMBOL_TYPE arg2 = cgen(p->bp++, global, "i32", Integer_type, numPointer);
+		SYMBOL_TYPE arg2 = cgen(p->bp++, global, "i32", Integer_type, 0);
 		reg2 = numRegister - 1;
 		switch(p->symbol){
 			case LESS_THAN:
@@ -242,22 +243,48 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 		}
 		return t;
 	}
-//	if(p->symbol == LOGICAL_AND || p->symbol == LOGICAL_OR){
-//		p->bp = p->const_bp;
-//		int reg1,reg2;
-//		int branchAssigned = branchNum++;
-//		cgen(p->bp++, global, "i32", Integer_type, numPointer);
-//  		cc << "\t%"<<numRegister++<<" = icmp ne i32 %"<<(numRegister-2)<<", 0\n";
-//  		if(p->symbol == LOGICAL_AND){  		
-//	  		cc << "\tbr i1 %"<<(numRegister-1)<<", label %true_case"<<branchAssigned<<", label %false_case"<<branchAssigned<<'\n';
-//	  		cc << "true_case:"
-//	  		cgen(p->bp++, global, "i32", Integer_type, numPointer);
-//	  		
-//  		}
-//  		else if(p->symbol == LOGICAL_OR){
-//  		
-//  		}
-//	}
+	if(p->symbol == LOGICAL_AND || p->symbol == LOGICAL_OR){
+		p->bp = p->const_bp;
+		int reg1;
+		int branchAssigned = branchNum++;
+		cgen(p->bp++, global, "i32", Integer_type, 0);
+  		cc << "\t%"<<numRegister++<<" = icmp ne i32 %"<<(numRegister-2)<<", 0\n";
+  		string entry_block = currBlock;
+  		cc << "\tbr i1 %"<<(numRegister-1)<<", label %true_case"<<branchAssigned<<", label %false_case"<<branchAssigned<<'\n';
+  		if(p->symbol == LOGICAL_AND){
+	  		cc << "\ntrue_case"<<branchAssigned<<":\n";
+	  		currBlock = "true_case"+to_string(branchAssigned);
+	  		cgen(p->bp++, global, "i32", Integer_type, 0);
+  			cc << "\t%"<<numRegister++<<" = icmp ne i32 %"<<(numRegister-2)<<", 0\n";
+	  		reg1 = numRegister - 1;
+  			cc << "\tbr label %false_case"<<branchAssigned<<'\n';
+	  		cc << "\nfalse_case"<<branchAssigned<<":\n";
+	  		cc << "\t%"<<(numRegister++)<<" = phi i1 [ false, %"<<entry_block<<" ], [ %"<<(reg1)<<", %"<< currBlock<<" ]\n";
+	  		currBlock = "false_case" + to_string(branchAssigned);
+  		}
+  		else if(p->symbol == LOGICAL_OR){
+			cc << "\nfalse_case"<<branchAssigned<<":\n";
+			currBlock = "false_case"+to_string(branchAssigned);
+			cgen(p->bp++, global, "i32", Integer_type, 0);
+  			cc << "\t%"<<numRegister++<<" = icmp ne i32 %"<<(numRegister-2)<<", 0\n";
+  			reg1 = numRegister - 1;
+  			cc << "\tbr label %true_case"<<branchAssigned<<'\n';
+  			cc << "\ntrue_case"<<branchAssigned << ":\n";
+	  		cc << "\t%"<<(numRegister++)<<" = phi i1 [ true, %"<<entry_block<<" ], [ %"<<(reg1)<<", %"<< currBlock<<" ]\n";
+	  		currBlock = "true_case" + to_string(branchAssigned); 
+  		}
+		if(t == Character_type){
+			cc << "\t%"<<numRegister++<<" = zext i1 %"<<(numRegister-2)<<" to i32\n";
+			cc << "\t%"<<numRegister++<<" = trunc i32 %"<<(numRegister-2)<<" to i8\n";
+		}
+		else if(t == Bool_type){
+			cc << "\t%"<<numRegister++<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
+		}
+		else if(t == Integer_type){
+			cc << "\t%"<<numRegister++<<" = zext i1 %"<<(numRegister-2)<<" to i32\n";
+		}
+		return t;
+	}
 	if(p->symbol == IDENT){
 		char* identifier = (char*)p->value;
 		binding* reg = getVaribleInfo(identifier);
@@ -745,7 +772,6 @@ void printFuncDefinition(NODE* p){
 	string allocation = "";
 	if(declarator->bp == declarator->children){
 		parameters = "(){\n";
-		numRegister++;
 	}
 	else{
 		parameters = "(";
@@ -756,7 +782,7 @@ void printFuncDefinition(NODE* p){
 		pointer_par = (int*)malloc(nChildren*sizeof(int));
 		pointer_base = pointer_par;
 		base = par_list;
-		int num_reg_for_parameters = (par->children - par->bp)+1;
+		int num_reg_for_parameters = (par->children - par->bp);
 		while(par->bp != par->children){
 			totalparameters++;
 			if(par->bp != par->const_bp) parameters = parameters + ", ";
@@ -832,6 +858,8 @@ void printFuncDefinition(NODE* p){
 	func->numPar		= totalparameters;
 	bool isReturnAbsent = true;
 	cc << "\ndefine"+ type + pointer + " @"<<identifier<<parameters;
+	cc << "entry:\n";
+	currBlock = "entry"; 
 	cc << allocation;
 	while (function_body->bp != function_body->children){
 		if(function_body->bp->symbol == RETURNN) isReturnAbsent = false;
