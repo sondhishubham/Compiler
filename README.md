@@ -2,7 +2,7 @@
 
 Run make to get the compiler.
 
-Run .cc <file.c> to run the compiler on file.c
+Run ./cc <file.c> to run the compiler on file.c
 
 You can run the example .cc examples/helloworld.c
 
