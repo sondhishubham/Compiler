@@ -121,7 +121,7 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 	  	cc <<"\t%"<<numRegister++ <<" = load "<<ret_type<<", "<<ret_type<<"* %" << (numRegister-2)<<align;
 		return t;
 	}
-	if(p->symbol == ASSIGN){
+	if(p->symbol == ASSIGN||p->symbol == MUL_ASSIGNN || p->symbol == DIV_ASSIGNN || p->symbol == MOD_ASSIGNN || p->symbol == ADD_ASSIGNN || p->symbol == SUB_ASSIGNN || p->symbol == LEFT_ASSIGNN || p->symbol == RIGHT_ASSIGNN || p->symbol == XOR_ASSIGNN || p->symbol == AND_ASSIGNN || p->symbol == OR_ASSIGNN){
 		p->bp = p->const_bp;
 		if(p->bp->symbol == INTEGER){
 			cout << "rvalue given on the left side of =\n";
@@ -147,14 +147,62 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 			num_pointer--;
 			align = ", align 8\n";
 		}
-		SYMBOL_TYPE k = cgen(rvalue, global,type,reg->type ,num_ptr);
+		if(p->symbol == ASSIGN){
+			cgen(rvalue, global,type,reg->type ,num_ptr);
+		}
+		else{
+			int reg1, reg2;
+			cgen(lvalue, global, "i32", Integer_type, 0);
+			reg1 = (numRegister - 1);
+			cgen(rvalue, global, "i32", Integer_type, 0);
+			reg2 = (numRegister - 1);
+			switch(p->symbol){
+				case MUL_ASSIGNN:
+					cc << "\t%"<<numRegister++<<" = mul nsw i32 %"<<reg1<<", %"<<reg2<<'\n';
+					break;
+				case DIV_ASSIGNN:
+					cc << "\t%"<<numRegister++<<" = sdiv i32 %"<<reg1<<", %"<<reg2<<'\n';
+					break;
+				case MOD_ASSIGNN:
+					cc << "\t%"<<numRegister++<<" = srem i32 %"<<reg1<<", %"<<reg2<<'\n';
+					break;
+				case ADD_ASSIGNN:
+					cc << "\t%"<<numRegister++<<" = add nsw i32 %"<<reg1<<", %"<<reg2<<'\n';
+					break;
+				case SUB_ASSIGNN:
+					cc << "\t%"<<numRegister++<<" = sub nsw i32 %"<<reg1<<", %"<<reg2<<'\n';
+					break;
+				case LEFT_ASSIGNN:
+					cc << "\t%"<<numRegister++<<" = shl i32 %"<<reg1<<", %"<<reg2<<'\n';
+					break;
+				case RIGHT_ASSIGNN:
+					cc << "\t%"<<numRegister++<<" = ashr i32 %"<<reg1<<", %"<<reg2<<'\n';
+					break;
+				case XOR_ASSIGNN:
+					cc << "\t%"<<numRegister++<<" = xor i32 %"<<reg1<<", %"<<reg2<<'\n';
+					break;
+				case AND_ASSIGNN:
+					cc << "\t%"<<numRegister++<<" = and i32 %"<<reg1<<", %"<<reg2<<'\n';
+					break;
+				case OR_ASSIGNN:
+					cc << "\t%"<<numRegister++<<" = or i32 %"<<reg1<<", %"<<reg2<<'\n';
+					break;
+			}
+			if(reg->type == Character_type)
+				cc << "\t%"<<numRegister++<<" = trunc i32 %"<<(numRegister-2)<<" to i8\n";
+			else if(reg->type == Bool_type){
+				cc << "\t%"<<numRegister++<<" = icmp ne i32 %"<<(numRegister-2)<<", 0\n";
+				cc << "\t%"<<numRegister++<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
+			}
+		}
+		
 		if(reg->scope_size == -1)
 			cc << "\tstore "<<type<<" %"<<(numRegister-1)<<", "<<type<<"* @"<< reg->identifier <<align;
 		else
 			cc << "\tstore "<<type<<" %"<<(numRegister-1)<<", "<<type<<"* %"<< reg->scope_size <<align;
 		return reg->type;
 	}
-	if(p->symbol == PLUS || p->symbol == SUB || p->symbol == MULT || p->symbol == DIVIDE || p->symbol == REMAINDER || p->symbol == LEFT_SHIFT || p->symbol == RIGHT_SHIFT){
+	if(p->symbol == PLUS || p->symbol == SUB || p->symbol == MULT || p->symbol == DIVIDE || p->symbol == REMAINDER || p->symbol == LEFT_SHIFT || p->symbol == RIGHT_SHIFT || p->symbol == EXCLUSIVE_OR || p->symbol == INCLUSIVE_OR || p->symbol == AND){
 		p->bp = p->const_bp;
 		int reg1, reg2;
 		SYMBOL_TYPE arg1 = cgen(p->bp++, global, "i32", Integer_type, 0);
@@ -183,6 +231,15 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 			case RIGHT_SHIFT:
 				cc << "\t%"<<numRegister++<<" = ashr i32 %"<<reg1<<", %"<<reg2<<'\n';
 				break;
+			case EXCLUSIVE_OR:
+				cc << "\t%"<<numRegister++<<" = xor i32 %"<<reg1<<", %"<<reg2<<'\n';
+				break;
+			case INCLUSIVE_OR:
+				cc << "\t%"<<numRegister++<<" = or i32 %"<<reg1<<", %"<<reg2<<'\n';
+				break;
+			case AND:
+				cc << "\t%"<<numRegister++<<" = and i32 %"<<reg1<<", %"<<reg2<<'\n';
+				break;
 		}
 		if(t == Character_type)
 			cc << "\t%"<<numRegister++<<" = trunc i32 %"<<(numRegister-2)<<" to i8\n";
@@ -192,7 +249,7 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 		}		
 		return t;
 	}
-	if(p->symbol == LESS_THAN || p->symbol == GREATER_THAN || p->symbol == LESS_THAN_EQUAL_TO || p->symbol == GREATER_THAN_EQUAL_TO || p->symbol == EQUAL_TO || p->symbol == NOT_EQUAL_TO || p->symbol == EXCLUSIVE_OR || p->symbol == INCLUSIVE_OR || p->symbol == AND){
+	if(p->symbol == LESS_THAN || p->symbol == GREATER_THAN || p->symbol == LESS_THAN_EQUAL_TO || p->symbol == GREATER_THAN_EQUAL_TO || p->symbol == EQUAL_TO || p->symbol == NOT_EQUAL_TO){
 		p->bp = p->const_bp;
 		int reg1, reg2;
 		SYMBOL_TYPE arg1 = cgen(p->bp++, global, "i32", Integer_type, 0);
@@ -217,18 +274,6 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 				break;
 			case NOT_EQUAL_TO:
 				cc << "\t%"<<numRegister++<<" = icmp ne i32 %"<<reg1<<", %"<<reg2<<'\n';
-				break;
-			case EXCLUSIVE_OR:
-				cc << "\t%"<<numRegister++<<" = xor i32 %"<<reg1<<", %"<<reg2<<'\n';
-				cc << "\t%"<<numRegister++<<" = icmp ne i32 %"<<numRegister-2<<", 0"<<'\n';
-				break;
-			case INCLUSIVE_OR:
-				cc << "\t%"<<numRegister++<<" = or i32 %"<<reg1<<", %"<<reg2<<'\n';
-				cc << "\t%"<<numRegister++<<" = icmp ne i32 %"<<numRegister-2<<", 0"<<'\n';
-				break;
-			case AND:
-				cc << "\t%"<<numRegister++<<" = and i32 %"<<reg1<<", %"<<reg2<<'\n';
-				cc << "\t%"<<numRegister++<<" = icmp ne i32 %"<<numRegister-2<<", 0"<<'\n';
 				break;
 		}
 		if(t == Character_type){
@@ -310,6 +355,7 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 			cc <<"\t%"<<numRegister++<<" = "<<"load "<<type<<", "<<type<<"* %"<<reg->scope_size<<align;
 		SYMBOL_TYPE expected = t;
 		SYMBOL_TYPE recieved = reg->type;
+		if(recieved == Character_type)
 		if(recieved == Character_type){
 			if(expected == Integer_type)
 				cc << "\t%"<<(numRegister++)<<" = sext i8 %"<<(numRegister-2)<<" to i32\n";
@@ -345,17 +391,21 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 		cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
 		cc << "\tbr i1 %"<<(numRegister-1)<<", label %true_case"<<branchAssigned<<", label %false_case"<<branchAssigned<<'\n';
 		cc << "\ntrue_case"<<branchAssigned<<":\n";
+		currBlock = "true_case" + to_string(branchAssigned);
 		cgen(p->bp++, global, ret_type, t, numPointer);
 		if(p->bp != p->children){
 			cc << "\tbr label %move_ahead"<<branchAssigned<<'\n';
 			cc << "\nfalse_case"<<branchAssigned<<":\n";
+			currBlock = "false_case" + to_string(branchAssigned);
 			cgen(p->bp++, global, ret_type, t, numPointer);
 			cc << "\nmove_ahead"<<branchAssigned<<":\n";
+			currBlock = "move_ahead"+to_string(branchAssigned);
 			return t;
 		}
 		else{
 			cc << "\tbr label %false_case"<<branchAssigned<<'\n';
 			cc << "\nfalse_case"<<branchAssigned<<":\n";
+			currBlock = "false_case" + to_string(branchAssigned);
 		}
 		return t;	
 	}
@@ -364,13 +414,16 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 		int branchAssigned = branchNum++;
 		cc << "\tbr label %cond"<<branchAssigned<<'\n';
 		cc << "\ncond"<<branchAssigned<<":\n";
+		currBlock = "cond" + to_string(branchAssigned);
 		SYMBOL_TYPE reg =  cgen(p->bp++, global, "i8", Bool_type, 0);
 		cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
 		cc << "\tbr i1 %"<<(numRegister-1)<<", label %true_case"<<branchAssigned<<", label %false_case"<<branchAssigned<<'\n';
 		cc << "\ntrue_case"<<branchAssigned<<":\n";
+		currBlock = "true_case" + to_string(branchAssigned);
 		cgen(p->bp++, global, ret_type, t, numPointer);
 		cc << "\tbr label %cond"<<branchAssigned<<'\n';
 		cc << "\nfalse_case"<<branchAssigned<<":\n";
+		currBlock = "false_case" + to_string(branchAssigned);
 		return t;
 	}
 	if(p->symbol == FUNC_CALL){
@@ -503,11 +556,14 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 							ptr = ptr+'*';
 							numPoint--;
 						}
+						if(expected != Ellipsis_type)
+							func_args = func_args + type + ptr;
+						else
+							expected = Integer_type;
 						cgen(args->bp++, global, type_ex+pointer, expected, n);
 						if(expected == Bool_type)
 							cc<<"\t%"<<numRegister++<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n"; // To convert the boolean to i1 to pass into the function
 						param = param + type + ptr + " %"+ to_string(numRegister-1);
-						if(expected != Ellipsis_type)func_args = func_args + type + ptr;
 					}
 					else {
 						cgen(args->bp++, global, "i32", Integer_type, 0);
