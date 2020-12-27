@@ -31,15 +31,23 @@ void increaseStackSize();
 void printStack();
 void printEntry(binding);
 
+string replaceCharacters(string);
 int branchNum;
 int numRegister;
+int numWhitespace;
+int stringNum;
+string constants = "";
 binding* getVaribleInfo(char*);
 void printGlobalDeclaration(NODE*, bool);
 void printDeclaration(NODE*);
 void printFuncDefinition(NODE*);
 SYMBOL_TYPE cgen(NODE*, bool, string, SYMBOL_TYPE, int);
 ofstream cc;
-
+void printConstants(){
+	cc << "\n\n\n";
+	cc << constants;
+	cc << "\n\n\n";
+}
 
 static void usage()
 {
@@ -72,8 +80,9 @@ main(int argc, char **argv)
 	}
   	cc.open("cc.ll");
   	initialize_stack();
-  	branchNum = 0;
+  	branchNum = 0; stringNum = 0; numWhitespace = 0;
   	cgen(abstract_syntax_tree, true, "", Function, 0);
+  	printConstants();
   	exitScope();
   	exit(0);
 }
@@ -82,6 +91,24 @@ main(int argc, char **argv)
 
 
 SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPointer){	// If global = 1, it is an external declaration.
+	if(p->symbol == STRING){
+		string numAssigned = to_string(stringNum++);
+		string val = "\""+replaceCharacters(string((char*)p->value)) + "\\00\"";
+		string size = to_string(val.length() - 4 - 2*numWhitespace);
+		constants = constants + "@.str"+numAssigned+" = private unnamed_addr constant ["+size+" x i8] c"+val+", align 1\n";
+		constants = constants + "@k"+numAssigned+" = global i8* getelementptr inbounds (["+size+" x i8], ["+size+" x i8]* @.str"+numAssigned+", i32 0, i32 0), align 8\n";
+		cc << "\t%"<<numRegister++<<" = load i8*, i8** @k"<<numAssigned<<", align 8\n";
+		if(numPointer == 0){
+			if(t == Integer_type)
+				cout << "Character pointer is used as an Integer\n";
+			if(t == Character_type)
+				cout << "Character pointer is used as a Character\n";
+			if(t == Bool_type)
+				cout << "Character pointer is used as a Boolean\n";
+			exit(0);
+		}
+		return Character_type;
+	}
 	if(p->symbol == INTEGER){
 		string align;
 		if(numPointer > 0) align = ", align 8\n";
@@ -129,9 +156,9 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 	if(p->symbol == PLUS || p->symbol == SUB || p->symbol == MULT || p->symbol == DIVIDE || p->symbol == REMAINDER || p->symbol == LEFT_SHIFT || p->symbol == RIGHT_SHIFT){
 		p->bp = p->const_bp;
 		int reg1, reg2;
-		SYMBOL_TYPE arg1 = cgen(p->bp++, global, ret_type, Integer_type, numPointer);
+		SYMBOL_TYPE arg1 = cgen(p->bp++, global, "i32", Integer_type, numPointer);
 		reg1 = numRegister-1;
-		SYMBOL_TYPE arg2 = cgen(p->bp++, global, ret_type, Integer_type, numPointer);
+		SYMBOL_TYPE arg2 = cgen(p->bp++, global, "i32", Integer_type, numPointer);
 		reg2 = numRegister - 1;
 		switch(p->symbol){
 			case PLUS:
@@ -167,9 +194,9 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 	if(p->symbol == LESS_THAN || p->symbol == GREATER_THAN || p->symbol == LESS_THAN_EQUAL_TO || p->symbol == GREATER_THAN_EQUAL_TO || p->symbol == EQUAL_TO || p->symbol == NOT_EQUAL_TO || p->symbol == EXCLUSIVE_OR || p->symbol == INCLUSIVE_OR || p->symbol == AND || p->symbol == LOGICAL_AND || p->symbol == LOGICAL_OR){
 		p->bp = p->const_bp;
 		int reg1, reg2;
-		SYMBOL_TYPE arg1 = cgen(p->bp++, global, ret_type, Integer_type, numPointer);
+		SYMBOL_TYPE arg1 = cgen(p->bp++, global, "i32", Integer_type, numPointer);
 		reg1 = numRegister-1;
-		SYMBOL_TYPE arg2 = cgen(p->bp++, global, ret_type, Integer_type, numPointer);
+		SYMBOL_TYPE arg2 = cgen(p->bp++, global, "i32", Integer_type, numPointer);
 		reg2 = numRegister - 1;
 		switch(p->symbol){
 			case LESS_THAN:
@@ -215,6 +242,22 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 		}
 		return t;
 	}
+//	if(p->symbol == LOGICAL_AND || p->symbol == LOGICAL_OR){
+//		p->bp = p->const_bp;
+//		int reg1,reg2;
+//		int branchAssigned = branchNum++;
+//		cgen(p->bp++, global, "i32", Integer_type, numPointer);
+//  		cc << "\t%"<<numRegister++<<" = icmp ne i32 %"<<(numRegister-2)<<", 0\n";
+//  		if(p->symbol == LOGICAL_AND){  		
+//	  		cc << "\tbr i1 %"<<(numRegister-1)<<", label %true_case"<<branchAssigned<<", label %false_case"<<branchAssigned<<'\n';
+//	  		cc << "true_case:"
+//	  		cgen(p->bp++, global, "i32", Integer_type, numPointer);
+//	  		
+//  		}
+//  		else if(p->symbol == LOGICAL_OR){
+//  		
+//  		}
+//	}
 	if(p->symbol == IDENT){
 		char* identifier = (char*)p->value;
 		binding* reg = getVaribleInfo(identifier);
@@ -271,37 +314,36 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 	if(p->symbol == IFTHEN){
 		p->bp = p->const_bp;
 		SYMBOL_TYPE reg =  cgen(p->bp++, global, "i8", Bool_type, 0);
+		int branchAssigned = branchNum++;
 		cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
-		cc << "\tbr i1 %"<<(numRegister-1)<<", label %true_case"<<branchNum<<", label %false_case"<<branchNum<<'\n';
-		cc << "\ntrue_case"<<branchNum<<":\n";
+		cc << "\tbr i1 %"<<(numRegister-1)<<", label %true_case"<<branchAssigned<<", label %false_case"<<branchAssigned<<'\n';
+		cc << "\ntrue_case"<<branchAssigned<<":\n";
 		cgen(p->bp++, global, ret_type, t, numPointer);
 		if(p->bp != p->children){
-			cc << "\tbr label %move_ahead"<<branchNum<<'\n';
-			cc << "\nfalse_case"<<branchNum<<":\n";
+			cc << "\tbr label %move_ahead"<<branchAssigned<<'\n';
+			cc << "\nfalse_case"<<branchAssigned<<":\n";
 			cgen(p->bp++, global, ret_type, t, numPointer);
-			cc << "\nmove_ahead"<<branchNum<<":\n";
-			branchNum++;
+			cc << "\nmove_ahead"<<branchAssigned<<":\n";
 			return t;
 		}
 		else{
-			cc << "\tbr label %false_case"<<branchNum<<'\n';
-			cc << "\nfalse_case"<<branchNum<<":\n";
-			branchNum++;
+			cc << "\tbr label %false_case"<<branchAssigned<<'\n';
+			cc << "\nfalse_case"<<branchAssigned<<":\n";
 		}
 		return t;	
 	}
 	if(p->symbol == WHILEE){
 		p->bp = p->const_bp;
-		cc << "\tbr label %cond"<<branchNum<<'\n';
-		cc << "\ncond"<<branchNum<<":\n";
+		int branchAssigned = branchNum++;
+		cc << "\tbr label %cond"<<branchAssigned<<'\n';
+		cc << "\ncond"<<branchAssigned<<":\n";
 		SYMBOL_TYPE reg =  cgen(p->bp++, global, "i8", Bool_type, 0);
 		cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
-		cc << "\tbr i1 %"<<(numRegister-1)<<", label %true_case"<<branchNum<<", label %false_case"<<branchNum<<'\n';
-		cc << "\ntrue_case"<<branchNum<<":\n";
+		cc << "\tbr i1 %"<<(numRegister-1)<<", label %true_case"<<branchAssigned<<", label %false_case"<<branchAssigned<<'\n';
+		cc << "\ntrue_case"<<branchAssigned<<":\n";
 		cgen(p->bp++, global, ret_type, t, numPointer);
-		cc << "\tbr label %cond"<<branchNum<<'\n';
-		cc << "\nfalse_case"<<branchNum<<":\n";
-		branchNum++;
+		cc << "\tbr label %cond"<<branchAssigned<<'\n';
+		cc << "\nfalse_case"<<branchAssigned<<":\n";
 		return t;
 	}
 	if(p->symbol == FUNC_CALL){
@@ -333,7 +375,6 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 					exit(0);
 				}
 				param = "()\n";
-				return t;
 			}
 			else{
 				param = "(";
@@ -348,6 +389,7 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 				for(int i(0);i<totalArguments;i++){
 					if( i != 0) param = param + ", ";
 					numPoint = *(par_pointer++);
+					int n = numPoint;
 					SYMBOL_TYPE expected = *(parameters++);	
 					string type, ptr, type_ex;
 					switch(expected){
@@ -365,7 +407,7 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 						ptr = ptr+'*';
 						numPoint--;
 					}
-					cgen(args->bp++, global, type_ex+pointer, expected, numPoint);
+					cgen(args->bp++, global, type_ex+pointer, expected, n);
 					if(expected == Bool_type)
 						cc<<"\t%"<<numRegister++<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
 					param = param + type + ptr + " %"+ to_string(numRegister-1);
@@ -386,7 +428,111 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 	  			cc <<"\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
 			}
 		}
-		return retType;
+		else{
+			string func_args = "";
+			if(p->bp == p->children){
+				if(reg->numPar > 1){		// Because 1 is for ellipsis
+					cout << "Fucntion "<<identifier<<" expects more arguments\n";
+					exit(0);
+				}
+				param = "()\n"; func_args = "(...) ";
+			}
+			else{
+				func_args = " (";
+				param = "(";
+				NODE* args = p->bp++;
+				args->bp = args->const_bp;
+				int numPoint(0);
+				int totalArguments = args->children - args->bp;
+				if(totalArguments < (reg->numPar-1)){
+					cout << "Function "<<identifier<<" expects more arguments\n";
+					exit(0);
+				}
+				for(int i(0);i<totalArguments;i++){
+					if(i < reg->numPar){
+						numPoint = *(par_pointer++);
+						int n = numPoint;
+						SYMBOL_TYPE expected = *(parameters++);
+						if( i != 0) {
+							param = param + ", ";
+							if(expected != Ellipsis_type) func_args = func_args + ", ";
+						}	
+						string type, ptr, type_ex;
+						switch(expected){
+							case Integer_type:
+								type = "i32"; type_ex = "i32";
+								break;
+							case Character_type:
+								type = "i8";type_ex = "i8";
+								break;
+							case Bool_type:
+								type = "i1";type_ex = "i8";
+								break;
+							case Ellipsis_type:
+								type = "i32";type_ex = "i32";
+								break;
+						}
+						while(numPoint>0){
+							ptr = ptr+'*';
+							numPoint--;
+						}
+						cgen(args->bp++, global, type_ex+pointer, expected, n);
+						if(expected == Bool_type)
+							cc<<"\t%"<<numRegister++<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n"; // To convert the boolean to i1 to pass into the function
+						param = param + type + ptr + " %"+ to_string(numRegister-1);
+						if(expected != Ellipsis_type)func_args = func_args + type + ptr;
+					}
+					else {
+						cgen(args->bp++, global, "i32", Integer_type, 0);
+						param = param + ", i32" + " %"+ to_string(numRegister-1);
+					}
+				}
+				param = param + ")\n";
+				func_args = func_args + ", ... ) ";
+			}
+			if(retType == Void_type){
+				cc << "\tcall void"+func_args+" @"<<identifier<<param;
+			}
+			else if(retType == Integer_type){
+	  			cc <<"\t%"<<(numRegister++)<<" = call i32"+pointer+func_args+" @"<<identifier<<param;
+			}
+			else if(retType == Character_type){
+	  			cc <<"\t%"<<(numRegister++)<<" = call i8"+pointer+func_args+" @"<<identifier<<param;
+			}
+			else if(retType == Bool_type){
+	  			cc <<"\t%"<<(numRegister++)<<" = call i1"+pointer+func_args+" @"<<identifier<<param;
+	  			cc <<"\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
+			}
+		}
+		SYMBOL_TYPE expected = t;
+		SYMBOL_TYPE recieved = retType;
+		if(recieved == Character_type){
+			if(expected == Integer_type)
+				cc << "\t%"<<(numRegister++)<<" = sext i8 %"<<(numRegister-2)<<" to i32\n";
+			else if(expected == Bool_type){
+				cc << "\t%"<<(numRegister++)<<" = icmp ne i8 %"<<(numRegister-2)<<", 0\n";
+  				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
+			}
+		}
+		else if(recieved == Integer_type){
+			if(expected == Character_type)
+				cc << "\t%"<<(numRegister++)<<" = trunc i32 %"<<(numRegister-2)<<" to i8\n";
+			else if(expected == Bool_type){
+				cc << "\t%"<<(numRegister++)<<" = icmp ne i32 %"<<(numRegister-2)<<", 0\n";
+  				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
+  			}
+		}
+		else if(recieved == Bool_type){
+			if(expected == Integer_type){
+				cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
+  				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i32\n";
+			}
+			else if(expected == Character_type || expected == Bool_type){
+				cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
+  				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
+			}
+		}		
+		return t;
 	}
 	if(p->symbol == BLOCK){
 		p->bp = p->const_bp;
@@ -768,7 +914,12 @@ void printGlobalDeclaration(NODE* p, bool global){
 				pointer_par = (int*)malloc(nPar*(sizeof(int)));
 				pointer_base= pointer_par;
 				base 	 = par_list;
+				bool hasSeenEllipsis = false;
 				while(par->bp != par->children){
+					if(hasSeenEllipsis){
+						cout << "Parameters given to a fucntion declaration after ellipsis\n";
+						exit(0);
+					}
 					totalparameters++;
 					if(par->bp != par->const_bp) parameters = parameters + ", ";
 					string par_type = "", par_pointer = "";
@@ -779,7 +930,7 @@ void printGlobalDeclaration(NODE* p, bool global){
 						while(declaration_specifier->symbol == CONSTT){
 							declaration_specifier = declaration_specifier->const_bp;
 						}
-						switch(declaration_specifiers->symbol){
+						switch(declaration_specifier->symbol){
 							case TYPE_INT:
 								par_type = "i32";*(par_list++) = Integer_type;
 								break;
@@ -804,6 +955,7 @@ void printGlobalDeclaration(NODE* p, bool global){
 						parameters = parameters + par_type + par_pointer;
 					}
 					if(curr_par->symbol == ELLIPSISS){
+						hasSeenEllipsis = true;
 						parameters = parameters + "...";
 						*(par_list++) = Ellipsis_type;
 						*(pointer_par++) = 0;
@@ -841,7 +993,12 @@ void printGlobalDeclaration(NODE* p, bool global){
 				pointer_par = (int*)malloc(nPar*(sizeof(int)));
 				pointer_base= pointer_par;
 				base 	 = par_list;
+				bool hasSeenEllipsis = false;
 				while(par->bp != par->children){
+					if(hasSeenEllipsis){
+						cout << "Parameter given to a fucntion after ellipsis\n";
+						exit(0);
+					}
 					totalparameters++;
 					if(par->bp != par->const_bp) parameters = parameters + ", ";
 					string par_type = "", par_pointer = "";
@@ -852,7 +1009,7 @@ void printGlobalDeclaration(NODE* p, bool global){
 						while(declaration_specifier->symbol == CONSTT){
 							declaration_specifier = declaration_specifier->const_bp;
 						}
-						switch(declaration_specifiers->symbol){
+						switch(declaration_specifier->symbol){
 							case TYPE_INT:
 								par_type = "i32";*(par_list++) = Integer_type;
 								break;
@@ -877,6 +1034,7 @@ void printGlobalDeclaration(NODE* p, bool global){
 						parameters = parameters + par_type + par_pointer;
 					}
 					if(curr_par->symbol == ELLIPSISS){
+						hasSeenEllipsis = true;
 						parameters = parameters + "...";
 						*(par_list++) = Ellipsis_type;
 						*(pointer_par++)=0;
@@ -990,8 +1148,13 @@ int addFunction(NODE* ptr){
 	
 	enterScope();
 //	if(parameters->symbol == PARAMETERS) cout << "PARAMETER
+	bool hasSeenEllipsis = false;
 	if (parameters!=NULL){
 		while(parameters->bp != parameters->children){
+			if(hasSeenEllipsis){
+				cout << "Parameter given to a fucntion definition after ellipsis\n";
+				return -1;
+			}
 			if(parameters->bp->symbol != ELLIPSISS){
 				NODE* declaration = parameters->bp;
 				declaration->bp++;
@@ -1010,6 +1173,7 @@ int addFunction(NODE* ptr){
 				numEntries++;
 			}
 			else if(parameters->bp->symbol == ELLIPSISS){
+				hasSeenEllipsis = true;
 				binding* en = new binding("Ellipsis", Variable, 0);
 				if(symbol_table - bp == sizeAssigned)
 					increaseStackSize();
@@ -1168,6 +1332,27 @@ bool isPreviouslyDeclared(char* k){
 	}
 	return false;
 }
+
+
+string replaceCharacters(string st){
+	numWhitespace = 0;
+    string rt = "";
+    for(int i(0);i<st.length();i++){
+    	if(i == 0 || i == st.length()-1) continue;
+        if(st[i] == '\\' && st[i+1] == 't'){
+            rt += "\\09"; i++;
+            numWhitespace++;
+            }
+        else if(st[i] == '\\' && st[i+1]=='n'){
+            rt += "\\0A"; i++;
+            numWhitespace++;
+            }
+        else 
+            rt += st[i];
+    }
+    return rt;
+}
+
 
 void printStack(){
 	while(bp != symbol_table) printEntry(*(bp++));

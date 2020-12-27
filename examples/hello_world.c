@@ -1,3 +1,6 @@
+
+int printf(char const *format, ...);
+
 int it(_Bool m, _Bool t){
 	return m + t;
 }
@@ -15,6 +18,7 @@ int main()
 {
 	int kk 	= it(1,1);
 	_Bool t1 = 1;
-	_Bool ll = bt(10, 'a', t1);
-	int las	= ct(10, 'a', 0);
+	char ll = bt(10, 'a', t1) + 'a';
+	_Bool las	= ct(10, 'a', 0);
+	printf("The int is %d \t The char is %c \t The bool is %d\n",kk,ll,las);
 }	
