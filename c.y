@@ -717,6 +717,7 @@ void printTree(NODE* p){
     		if(p->symbol == DECLARATION)cout << "[DECLARATION[";
     	case INITIALIZE:
     		if(p->symbol == INITIALIZE)cout << "[INITIALIZE[";
+    		p->bp = p->const_bp;
     		printTree(p->bp++);
     		cout << "],[";
     		printTree(p->bp++);
@@ -754,6 +755,7 @@ void printTree(NODE* p){
     		if(p->symbol == PARAMETERS)cout<< "PARAMETERS[";
     	case CODE_SECTIONS:
     		if(p->symbol == CODE_SECTIONS)cout<< "CODE_SECTIONS[";
+    		p->bp = p->const_bp;
     		while(p->bp != p->children){
     			cout<<"|[";
     			printTree(p->bp++);
