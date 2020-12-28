@@ -115,7 +115,14 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 		if(numPointer > 0) align = ", align 8\n";
 		else if(t == Integer_type) align = ", align 4\n";
 		else align = ", align 1\n"; 
-		int val = *((int*)p->value);
+		int v = *((int*)p->value);
+		int val;
+		if(t == Bool_type){
+			val = (v == 0)?(0):(1);
+		}
+		else{
+			val = v;
+		}
 		cc <<"\t%"<<numRegister<<" = alloca "<<ret_type<<align;
 		cc << "\tstore " <<ret_type <<" "<< val <<", "<<ret_type<<"* %" << numRegister++<<align;
 	  	cc <<"\t%"<<numRegister++ <<" = load "<<ret_type<<", "<<ret_type<<"* %" << (numRegister-2)<<align;
@@ -373,11 +380,13 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 		}
 		else if(recieved == Bool_type){
 			if(expected == Integer_type){
-				cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
+				cc << "\t%"<<(numRegister++)<<" = sext i8 %"<<(numRegister-2)<<" to i32\n";
+				cc << "\t%"<<(numRegister++)<<" = icmp ne i32 %"<<(numRegister-2)<<", 0\n";
   				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i32\n";
 			}
-			else if(expected == Character_type || expected == Bool_type){
-				cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
+			else if(expected == Character_type){
+				cc << "\t%"<<(numRegister++)<<" = sext i8 %"<<(numRegister-2)<<" to i32\n";
+				cc << "\t%"<<(numRegister++)<<" = icmp ne i32 %"<<(numRegister-2)<<", 0\n";
   				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
 			}
 		}		
@@ -606,13 +615,15 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 		}
 		else if(recieved == Bool_type){
 			if(expected == Integer_type){
-				cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
+				cc << "\t%"<<(numRegister++)<<" = sext i8 %"<<(numRegister-2)<<" to i32\n";
+				cc << "\t%"<<(numRegister++)<<" = icmp ne i32 %"<<(numRegister-2)<<", 0\n";
   				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i32\n";
 			}
-			else if(expected == Character_type || expected == Bool_type){
-				cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
+			else if(expected == Character_type){
+				cc << "\t%"<<(numRegister++)<<" = sext i8 %"<<(numRegister-2)<<" to i32\n";
+				cc << "\t%"<<(numRegister++)<<" = icmp ne i32 %"<<(numRegister-2)<<", 0\n";
   				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
-			}
+			}		
 		}		
 		return t;
 	}
