@@ -66,19 +66,19 @@ main(int argc, char **argv)
   yyin = fopen(filename, "r");
   assert(yyin);
   int ret = yyparse();
-  printTree(abstract_syntax_tree); cout << '\n'; // iF you are going to print tree, remove check semantics!!!!
+//  printTree(abstract_syntax_tree); cout << '\n'; // iF you are going to print tree, remove check semantics!!!!
 	if(ret != 0){
   		printf("retv = %d\n", ret);
   		exit(0);
 	}
-//  	initialize_stack();
-//   	int ans = check_semantics(abstract_syntax_tree);//Don't check semantics if the code prints syntax tree.
-// 	exitScope();
-// 	free(bp);
-// 	if(ans != 0){
-//  		printf("retv = %d\n", ans);
-//  		exit(0);
-//	}
+  	initialize_stack();
+   	int ans = check_semantics(abstract_syntax_tree);//Don't check semantics if the code prints syntax tree.
+ 	exitScope();
+ 	free(bp);
+ 	if(ans != 0){
+  		printf("retv = %d\n", ans);
+  		exit(0);
+	}
   	cc.open("cc.ll");
   	initialize_stack();
   	branchNum = 0; stringNum = 0; numWhitespace = 0;
