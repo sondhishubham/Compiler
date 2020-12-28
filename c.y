@@ -611,6 +611,7 @@ void addChild(NODE* parent, NODE* child){
 }
 
 void printTree(NODE* p){
+	if(p == NULL) cout << "[NULL]";
     switch(p->symbol){   
     	case INTEGER:
     		cout << "INTEGER("<<*((int*)p->value)<<")";	

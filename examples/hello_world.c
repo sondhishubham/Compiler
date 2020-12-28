@@ -24,9 +24,3 @@ int main()
 }	
 
 
-/*int main(){*/
-/*	_Bool a = 2;*/
-/*	_Bool b = 1;*/
-/*	int l = a + b;*/
-/*	printf("%d\n", l);*/
-/*}*/

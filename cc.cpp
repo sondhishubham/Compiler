@@ -55,6 +55,9 @@ static void usage()
   printf("Usage: cc <prog.c>\n");
 }
 
+
+void constantFolding(NODE*);
+
 int
 main(int argc, char **argv)
 {
@@ -79,6 +82,11 @@ main(int argc, char **argv)
   		printf("retv = %d\n", ans);
   		exit(0);
 	}
+	printTree(abstract_syntax_tree);
+	cout << "\n\n";
+	constantFolding(abstract_syntax_tree);
+	printTree(abstract_syntax_tree);
+	cout << "\n\n";
   	cc.open("cc.ll");
   	initialize_stack();
   	branchNum = 0; stringNum = 0; numWhitespace = 0;
@@ -88,10 +96,224 @@ main(int argc, char **argv)
   	exit(0);
 }
 
+
+
+
+
+
+void constantFolding(NODE* p){
+	if(p==NULL || p->symbol == INTEGER || p->symbol == STRING || p->symbol == IDENT || p->numChildren == 0) return;
+	p->bp = p->const_bp;
+	if(p->symbol == PLUS || p->symbol == SUB || p->symbol == MULT || p->symbol == DIVIDE || p->symbol == REMAINDER || p->symbol == LEFT_SHIFT || p->symbol == RIGHT_SHIFT || p->symbol == EXCLUSIVE_OR || p->symbol == INCLUSIVE_OR || p->symbol == AND || p->symbol == LOGICAL_AND || p->symbol == LOGICAL_OR || p->symbol == LESS_THAN || p->symbol == GREATER_THAN || p->symbol == LESS_THAN_EQUAL_TO || p->symbol == GREATER_THAN_EQUAL_TO || p->symbol == EQUAL_TO || p->symbol == NOT_EQUAL_TO){
+		NODE* firstNumber	= p->bp++;
+		NODE* secondNumber	= p->bp++;
+		constantFolding(firstNumber);
+		constantFolding(secondNumber);
+		if(firstNumber->symbol==INTEGER && secondNumber->symbol == INTEGER){
+			int* val = (int*)malloc(sizeof(int));
+			switch(p->symbol){
+				case PLUS:
+					*val = *((int*)firstNumber->value) + *((int*)secondNumber->value);
+					p->symbol = INTEGER;
+					break;
+				case SUB:
+					*val = *((int*)firstNumber->value) - *((int*)secondNumber->value);
+					p->symbol = INTEGER;
+					break;
+				case MULT:
+					*val = *((int*)firstNumber->value) * *((int*)secondNumber->value);
+					p->symbol = INTEGER;
+					break;
+				case DIVIDE:
+					*val = *((int*)firstNumber->value) / *((int*)secondNumber->value);
+					p->symbol = INTEGER;
+					break;
+				case REMAINDER:
+					*val = *((int*)firstNumber->value) % *((int*)secondNumber->value);
+					p->symbol = INTEGER;
+					break;
+				case LEFT_SHIFT:
+					*val = *((int*)firstNumber->value) << *((int*)secondNumber->value);
+					p->symbol = INTEGER;
+					break;
+				case RIGHT_SHIFT:
+					*val = *((int*)firstNumber->value) >> *((int*)secondNumber->value);
+					p->symbol = INTEGER;
+					break;
+				case EXCLUSIVE_OR:
+					*val = *((int*)firstNumber->value) ^ *((int*)secondNumber->value);
+					p->symbol = INTEGER;
+					break;
+				case INCLUSIVE_OR:
+				case LOGICAL_OR:
+					*val = *((int*)firstNumber->value) || *((int*)secondNumber->value);
+					p->symbol = INTEGER;
+					break;
+				case AND:
+				case LOGICAL_AND:
+					*val = *((int*)firstNumber->value) && *((int*)secondNumber->value);
+					p->symbol = INTEGER;
+					break;
+				case LESS_THAN:
+					*val = *((int*)firstNumber->value) < *((int*)secondNumber->value);
+					p->symbol = INTEGER;
+					break;
+				case GREATER_THAN:
+					*val = *((int*)firstNumber->value) > *((int*)secondNumber->value);
+					p->symbol = INTEGER;
+					break;
+				case LESS_THAN_EQUAL_TO:
+					*val = *((int*)firstNumber->value) <= *((int*)secondNumber->value);
+					p->symbol = INTEGER;
+					break;
+				case GREATER_THAN_EQUAL_TO:
+					*val = *((int*)firstNumber->value) >= *((int*)secondNumber->value);
+					p->symbol = INTEGER;
+					break;
+				case EQUAL_TO:
+					*val = *((int*)firstNumber->value) == *((int*)secondNumber->value);
+					p->symbol = INTEGER;
+					break;
+				case NOT_EQUAL_TO:
+					*val = *((int*)firstNumber->value) != *((int*)secondNumber->value);
+					p->symbol = INTEGER;
+					break;
+			}
+			free(firstNumber->value); free(secondNumber->value);
+			p->numChildren = 0;
+			p->children = p->const_bp;
+			p->bp = p->const_bp;
+			free(p->bp);
+			p->value = val;
+		}
+		else if(firstNumber->symbol == INTEGER && *((int*)firstNumber->value)==0){	
+			int* val = (int*)malloc(sizeof(int));
+			if(p->symbol == PLUS || p->symbol == LOGICAL_OR || p->symbol == INCLUSIVE_OR || p->symbol == EXCLUSIVE_OR){
+				*p = *secondNumber;
+				constantFolding(p);
+			}
+			else if(p->symbol == MULT || p->symbol == LEFT_SHIFT || p->symbol == RIGHT_SHIFT || p->symbol == REMAINDER || p->symbol == DIVIDE || p->symbol == AND || p->symbol == LOGICAL_AND){
+				*val = 0;
+				free(firstNumber->value); free(secondNumber->value);
+				p->numChildren = 0;
+				p->children = p->const_bp;
+				p->bp 		= p->const_bp;
+				free(p->bp);
+				p->symbol 	= INTEGER;
+				p->value 	= val;
+			}
+		}
+		else if(secondNumber->symbol == INTEGER && *((int*)secondNumber->value)==0){
+			int* val = (int*)malloc(sizeof(int));
+			if(p->symbol == PLUS || p->symbol == SUB || p->symbol == LOGICAL_OR || p->symbol == INCLUSIVE_OR || p->symbol == EXCLUSIVE_OR || p->symbol == LEFT_SHIFT || p->symbol == RIGHT_SHIFT){
+				*p = *firstNumber;
+				constantFolding(p);
+			}
+			else if(p->symbol == MULT || p->symbol == AND || p->symbol == LOGICAL_AND){
+				*val = 0;
+				free(firstNumber->value); free(secondNumber->value);
+				p->numChildren = 0;
+				p->children = p->const_bp;
+				p->bp 		= p->const_bp;
+				free(p->bp);
+				p->symbol 	= INTEGER;
+				p->value 	= val;
+			}
+			else if(p->symbol == DIVIDE || p->symbol == REMAINDER){
+				cout << "Division by 0\n";
+				exit(0);
+			}
+		}
+		else if(firstNumber->symbol == INTEGER && *((int*)firstNumber->value)!=0){	
+			int* val = (int*)malloc(sizeof(int));
+			if(p->symbol == AND || p->symbol == LOGICAL_AND || (*((int*)firstNumber->value)==1 && (p->symbol == MULT))){
+				*p = *secondNumber;
+				constantFolding(p);
+			}
+			else if(p->symbol == LOGICAL_OR || p->symbol == INCLUSIVE_OR){
+				*val = 1;
+				free(firstNumber->value); free(secondNumber->value);
+				p->numChildren = 0;
+				p->children = p->const_bp;
+				p->bp 		= p->const_bp;
+				free(p->bp);
+				p->symbol 	= INTEGER;
+				p->value 	= val;
+			}
+		}
+		else if(secondNumber->symbol == INTEGER && *((int*)secondNumber->value)!=0){
+			int* val = (int*)malloc(sizeof(int));
+			if(p->symbol == AND || p->symbol == LOGICAL_AND || (*((int*)firstNumber->value)==1 && (p->symbol == MULT || p->symbol == DIVIDE))){
+				*p = *secondNumber;
+				constantFolding(p);
+			}
+			else if(p->symbol == LOGICAL_OR || p->symbol == INCLUSIVE_OR){
+				*val = 1;
+				free(firstNumber->value); free(secondNumber->value);
+				p->numChildren = 0;
+				p->children = p->const_bp;
+				p->bp 		= p->const_bp;
+				free(p->bp);
+				p->symbol 	= INTEGER;
+				p->value 	= val;
+			}
+		}
+		return;
+	}
+	if(p->symbol == IFTHEN){
+		NODE* cond = p->bp++;
+		NODE* trueBlock = p->bp++;
+		NODE* falseBlock = (p->bp == p->children)?(NULL):(p->bp++);
+		constantFolding(cond);
+		constantFolding(trueBlock);
+		constantFolding(falseBlock);
+		if(cond->symbol == INTEGER){
+			if (*((int*)cond->value) != 0)
+				*p = *trueBlock;
+			else{
+				if(falseBlock == NULL){
+					*p = *(new NODE(BLOCK, NULL, 0));
+					}
+				else
+					*p = *falseBlock;
+			}
+		}
+		return;
+	}
+	if(p->symbol == WHILEE){
+		NODE* cond = p->bp++;
+		NODE* loop = p->bp++;
+		constantFolding(cond);
+		constantFolding(loop);
+		if(cond->symbol == INTEGER && *((int*)cond->value) == 0)
+			*p = *(new NODE(BLOCK, NULL, 0));
+		return;
+	}
+	while(p->bp != p->children){
+		constantFolding(p->bp++);
+	}
+	return; 
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 															// Numregister is the next value and numregister-1 is the last used register.
 
 
 SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPointer){	// If global = 1, it is an external declaration.
+	if(p == NULL) return t;
 	if(p->symbol == STRING){
 		string numAssigned = to_string(stringNum++);
 		string val = "\""+replaceCharacters(string((char*)p->value)) + "\\00\"";
@@ -673,13 +895,11 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 		printFuncDefinition(p);
 		return t;
 	}
-	else{
-		p->bp = p->const_bp;
-		while(p->bp!=p->children){
-			cgen(p->bp++,global,ret_type,t,numPointer);
-		}
-		return t;
+	p->bp = p->const_bp;
+	while(p->bp!=p->children){
+		cgen(p->bp++,global,ret_type,t,numPointer);
 	}
+	return t;
 }
 
 
@@ -747,14 +967,16 @@ void printDeclaration(NODE* p){
 			}
 			else if(k == Bool_type){
 				if(t == Integer_type){
-					cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
+					cc << "\t%"<<(numRegister++)<<" = sext i8 %"<<(numRegister-2)<<" to i32\n";
+					cc << "\t%"<<(numRegister++)<<" = icmp ne i32 %"<<(numRegister-2)<<", 0\n";
 	  				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i32\n";
 				}
-				else if(t == Character_type || t == Bool_type){
-					cc << "\t%"<<(numRegister++)<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
+				else if(t == Character_type){
+					cc << "\t%"<<(numRegister++)<<" = sext i8 %"<<(numRegister-2)<<" to i32\n";
+					cc << "\t%"<<(numRegister++)<<" = icmp ne i32 %"<<(numRegister-2)<<", 0\n";
 	  				cc << "\t%"<<(numRegister++)<<" = zext i1 %"<<(numRegister-2)<<" to i8\n";
-				}
-			}
+				}		
+			}		
 			cc << "\tstore " <<type+pointer<<" %"<<numRegister-1<<", "+type <<'*'+pointer<<" %" <<curr_register<<align << '\n';
 		}
 		else{
@@ -947,6 +1169,7 @@ void printFuncDefinition(NODE* p){
 void printGlobalDeclaration(NODE* p, bool global){
 	bool isInitiazlizer = false;
 	int totalparameters(0);
+	bool isBool = false;
 	bool isFunc = false;
 	string isConstant = "global";
 	p->bp = p->const_bp;
@@ -969,7 +1192,7 @@ void printGlobalDeclaration(NODE* p, bool global){
 			type = " i8"; align = ", align 1"; specific_align = align; t = Character_type;
 			break;
 		case TYPE_BOOL:
-			type = " i8"; align = ", align 1"; specific_align = align; t = Bool_type;
+			type = " i8"; align = ", align 1"; specific_align = align; t = Bool_type; isBool = true;
 			break;
 		case TYPE_VOID:
 			type = ""; t = Void_type;
@@ -985,8 +1208,14 @@ void printGlobalDeclaration(NODE* p, bool global){
 			ident = k->bp++; ident->bp = ident->const_bp;
 			NODE* val = k->bp++; val->bp = val->const_bp; 
 			if(global){
-				if (val->symbol == INTEGER)
-					initializer = to_string(*((int*)val->value));
+				if (val->symbol == INTEGER){
+						if(isBool){
+							int v = *((int*)val->value);
+							initializer = (v==0)?("0"):("1");
+						}
+						else
+							initializer = to_string(*((int*)val->value));
+					}
 				else{
 					cout << "Only constants can be given as initializer in external declarations"<<endl;
 					exit(0);
