@@ -57,7 +57,16 @@ static void usage()
 
 
 void constantFolding(NODE*);
+void constantPropagation(NODE*);
+void startPropagation(NODE*);
+void propagateDeclarations(NODE*);
 
+
+//void constantPropagation(NODE* p){
+//	initialize_stack();
+//	startPropagation(p);
+//	exitScope();
+//}
 int
 main(int argc, char **argv)
 {
@@ -95,6 +104,78 @@ main(int argc, char **argv)
   	exitScope();
   	exit(0);
 }
+
+
+//void startPropagation(NODE* p){
+//	if(p->symbol == DECLARATION){
+//		propagateDeclarations(p); return;
+//	}
+//}
+
+//int propagateDeclarations(NODE* ptr){
+//	ptr->bp = ptr->const_bp;
+//	NODE* declaration_specifiers = ptr->bp++;
+//	NODE declaration_list = ptr->bp++;
+//	SYMBOL_TYPE t = Variable;
+//	int numDeclarations = declaration_list->children - declaration_list->bp;
+//	while(declaration_list.bp != declaration_list.children){
+//		NODE* ident;
+//		if((declaration_list.bp)->symbol == INITIALIZE){ 			//check if the initializer part is correct or not, a = 10, 10 is correct or not
+//			NODE* k = declaration_list.bp;
+//			ident  = k->bp++;
+//			while(ident->symbol == POINTER) ident = ident->bp;
+//			NODE* initializer = k->bp++;
+//			if (ident->symbol == FUNC_DECLARATOR){ 
+//				cout << "Function is declared as a variable"<<'\n';
+//				return -1;
+//			}
+//			if (check_semantics(initializer) == -1)	return -1;
+//		}
+//		else if((declaration_list.bp)->symbol == FUNC_DECLARATOR){	//In the case of declaration of fucntion like "void printf();"
+//			t = Function;
+//			NODE* k = declaration_list.bp;// k is the FUNC_DECLARATOR
+//			ident = k->bp++;
+//			if(ident->symbol == FUNC_DECLARATOR){
+//				cout << "Declaration of a function returning a function" <<endl;
+//				return -1;
+//			}
+//		}
+//		else     													//In case when there is simple declaration like int b,v,d; No initializing and no function declaraions
+//			ident = declaration_list.bp;
+//		while (ident->symbol == POINTER){
+//			ident = ident->bp;			// To take care of pointers while declaraion
+//		}
+//		if(ident->symbol == FUNC_DECLARATOR){
+//			t = Function;
+//			ident = ident->bp;
+//			if(ident->symbol == FUNC_DECLARATOR){
+//				cout << "Declaration of a function returning a function" <<endl;
+//				return -1;
+//			}
+//		}
+//		char* identifier_name = (char*)ident->value;
+//		if(t==Variable && isPreviouslyDeclared(identifier_name)){
+//			return -1;
+//		}
+//		if(t==Function){
+//			int exists = doesExist(identifier_name, Function);
+//			if(exists == 0){
+//				declaration_list.bp++; continue;
+//			}
+//		}
+//		binding* entry = new binding(identifier_name, t, 0);
+//		if(symbol_table-bp == sizeAssigned)
+//			increaseStackSize();
+//		*(symbol_table++) = *entry;
+//		numEntries++;
+//		declaration_list.bp++;
+//	}
+//	return 0;
+//}
+
+
+
+
 
 
 
@@ -190,7 +271,6 @@ void constantFolding(NODE* p){
 			int* val = (int*)malloc(sizeof(int));
 			if(p->symbol == PLUS || p->symbol == LOGICAL_OR || p->symbol == INCLUSIVE_OR || p->symbol == EXCLUSIVE_OR){
 				*p = *secondNumber;
-				constantFolding(p);
 			}
 			else if(p->symbol == MULT || p->symbol == LEFT_SHIFT || p->symbol == RIGHT_SHIFT || p->symbol == REMAINDER || p->symbol == DIVIDE || p->symbol == AND || p->symbol == LOGICAL_AND){
 				*val = 0;
@@ -207,7 +287,6 @@ void constantFolding(NODE* p){
 			int* val = (int*)malloc(sizeof(int));
 			if(p->symbol == PLUS || p->symbol == SUB || p->symbol == LOGICAL_OR || p->symbol == INCLUSIVE_OR || p->symbol == EXCLUSIVE_OR || p->symbol == LEFT_SHIFT || p->symbol == RIGHT_SHIFT){
 				*p = *firstNumber;
-				constantFolding(p);
 			}
 			else if(p->symbol == MULT || p->symbol == AND || p->symbol == LOGICAL_AND){
 				*val = 0;
@@ -228,7 +307,6 @@ void constantFolding(NODE* p){
 			int* val = (int*)malloc(sizeof(int));
 			if(p->symbol == AND || p->symbol == LOGICAL_AND || (*((int*)firstNumber->value)==1 && (p->symbol == MULT))){
 				*p = *secondNumber;
-				constantFolding(p);
 			}
 			else if(p->symbol == LOGICAL_OR || p->symbol == INCLUSIVE_OR){
 				*val = 1;
@@ -243,9 +321,8 @@ void constantFolding(NODE* p){
 		}
 		else if(secondNumber->symbol == INTEGER && *((int*)secondNumber->value)!=0){
 			int* val = (int*)malloc(sizeof(int));
-			if(p->symbol == AND || p->symbol == LOGICAL_AND || (*((int*)firstNumber->value)==1 && (p->symbol == MULT || p->symbol == DIVIDE))){
-				*p = *secondNumber;
-				constantFolding(p);
+			if(p->symbol == AND || p->symbol == LOGICAL_AND || (*((int*)secondNumber->value)==1 && (p->symbol == MULT || p->symbol == DIVIDE))){
+				*p = *firstNumber;
 			}
 			else if(p->symbol == LOGICAL_OR || p->symbol == INCLUSIVE_OR){
 				*val = 1;
@@ -294,21 +371,6 @@ void constantFolding(NODE* p){
 	}
 	return; 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 															// Numregister is the next value and numregister-1 is the last used register.
 
 
