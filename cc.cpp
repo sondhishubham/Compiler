@@ -355,7 +355,6 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 			cc <<"\t%"<<numRegister++<<" = "<<"load "<<type<<", "<<type<<"* %"<<reg->scope_size<<align;
 		SYMBOL_TYPE expected = t;
 		SYMBOL_TYPE recieved = reg->type;
-		if(recieved == Character_type)
 		if(recieved == Character_type){
 			if(expected == Integer_type)
 				cc << "\t%"<<(numRegister++)<<" = sext i8 %"<<(numRegister-2)<<" to i32\n";
