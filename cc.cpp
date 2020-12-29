@@ -33,7 +33,7 @@ void initialize_stack();
 void increaseStackSize();
 void printStack();
 void printEntry(binding);
-void putVal(char*, int);
+void putVal(char*, int, bool);
 
 string replaceCharacters(string);
 string currBlock;
@@ -60,6 +60,7 @@ static void usage()
 }
 
 
+bool isChanged;
 void constantFolding(NODE*);
 void constantPropagation(NODE*);
 void startPropagation(NODE*);
@@ -100,8 +101,12 @@ main(int argc, char **argv)
 	}
 	printTree(abstract_syntax_tree);
 	cout << "\n\n";
-	constantFolding(abstract_syntax_tree);
-	constantPropagation(abstract_syntax_tree);
+	isChanged = true;
+	while(isChanged){
+		isChanged = false;
+		constantFolding(abstract_syntax_tree);
+		constantPropagation(abstract_syntax_tree);
+	}
 	printTree(abstract_syntax_tree);
 	cout << "\n\n";
   	cc.open("cc.ll");
@@ -123,12 +128,12 @@ void startPropagation(NODE* ptr){
 		NODE* rval 			= ptr->bp++;
 		startPropagation(rval);
 		if(rval->symbol == INTEGER){
-			putVal(variableName, *((int*)rval->value));
+			putVal(variableName, *((int*)rval->value), true);
 		}
 		else if(rval->symbol == IDENT){
 			int* val = (int*)malloc(sizeof(int));
 			binding* entry = getVaribleInfo((char*)rval->value);
-			if(entry->scope_size != -1 && (entry->type == Integer_type || entry->type == Character_type || entry->type == Bool_type)){
+			if(entry->isValueAvailable && (entry->type == Integer_type || entry->type == Character_type || entry->type == Bool_type)){
 				if(entry->type == Integer_type){
 					*val 		= entry->scope_size;
 				}
@@ -145,13 +150,13 @@ void startPropagation(NODE* ptr){
 				rval->numChildren 	= 0;
 				rval->bp			= rval->const_bp;
 				rval->children		= rval->const_bp;
-				putVal(variableName, *val);
+				putVal(variableName, *val, true);
 			}
 			else
-				putVal(variableName, -1);
+				putVal(variableName, -1, false);
 		}
 		else{
-			putVal(variableName, -1);
+			putVal(variableName, -1, false);
 		}
 		return;
 	}
@@ -163,7 +168,7 @@ void startPropagation(NODE* ptr){
 		startPropagation(rval);
 		char* lvarName	= (char*)lval->value;
 		binding* lentry 	= getVaribleInfo(lvarName);
-		if(lentry->scope_size != -1 && (lentry->type == Integer_type || lentry->type == Character_type || lentry->type == Bool_type)){
+		if(lentry->isValueAvailable && (lentry->type == Integer_type || lentry->type == Character_type || lentry->type == Bool_type)){
 			if(lentry->scope_size == 0 || (lentry->scope_size == 1 && ptr->symbol == MUL_ASSIGNN) || ptr->symbol == OR_ASSIGNN || ptr->symbol == AND_ASSIGNN)
 				convert = true;
 		}
@@ -171,18 +176,18 @@ void startPropagation(NODE* ptr){
 			int v = *((int*)rval->value);
 			if( v == 0 || (v == 1 && (ptr->symbol == MUL_ASSIGNN||ptr->symbol == DIV_ASSIGNN)) || ptr->symbol == OR_ASSIGNN || ptr->symbol == AND_ASSIGNN)
 					convert = true;
-			if(lentry->scope_size != -1 && (lentry->type == Integer_type || lentry->type == Character_type || lentry->type == Bool_type))
+			if(lentry->isValueAvailable && (lentry->type == Integer_type || lentry->type == Character_type || lentry->type == Bool_type))
 					convert = true;			  	
 		}
 		if(rval->symbol == IDENT){
 			char* rvarName	= (char*)rval->value;
 			binding* rentry 	= getVaribleInfo(rvarName);
-			if(rentry->scope_size != -1 && (rentry->type == Integer_type || rentry->type == Character_type || rentry->type == Bool_type)){
+			if(rentry->isValueAvailable && (rentry->type == Integer_type || rentry->type == Character_type || rentry->type == Bool_type)){
 				if(rentry->scope_size == 0 || (rentry->scope_size == 1 && (ptr->symbol == MUL_ASSIGNN||ptr->symbol == DIV_ASSIGNN)) || ptr->symbol == OR_ASSIGNN || ptr->symbol == AND_ASSIGNN)
 					convert = true;
 			}
-			if((lentry->scope_size != -1 && (lentry->type == Integer_type || lentry->type == Character_type || lentry->type == Bool_type))
-			  &&(rentry->scope_size != -1 && (rentry->type == Integer_type || rentry->type == Character_type || rentry->type == Bool_type)))
+			if((lentry->isValueAvailable && (lentry->type == Integer_type || lentry->type == Character_type || lentry->type == Bool_type))
+			  &&(rentry->isValueAvailable && (rentry->type == Integer_type || rentry->type == Character_type || rentry->type == Bool_type)))
 			  	convert = true;
 		}
 		if(convert){
@@ -225,7 +230,7 @@ void startPropagation(NODE* ptr){
 			NODE* newTree		= createBinaryNode(ASSIGN, lval, rightTree);
 			*ptr				= *newTree;
 		}
-		putVal(lvarName, -1);
+		putVal(lvarName, -1, false);
 		return;
 	}
 	else if(ptr->symbol == PLUS || ptr->symbol == SUB || ptr->symbol == MULT || ptr->symbol == DIVIDE || ptr->symbol == REMAINDER || ptr->symbol == LEFT_SHIFT || ptr->symbol == RIGHT_SHIFT || ptr->symbol == EXCLUSIVE_OR || ptr->symbol == INCLUSIVE_OR || ptr->symbol == AND || ptr->symbol == LOGICAL_AND || ptr->symbol == LOGICAL_OR || ptr->symbol == LESS_THAN || ptr->symbol == GREATER_THAN || ptr->symbol == LESS_THAN_EQUAL_TO || ptr->symbol == GREATER_THAN_EQUAL_TO || ptr->symbol == EQUAL_TO || ptr->symbol == NOT_EQUAL_TO){
@@ -286,7 +291,8 @@ void startPropagation(NODE* ptr){
 void replaceIdent(NODE* firstNumber){
 	int* val = (int*)malloc(sizeof(int));
 	binding* entry = getVaribleInfo((char*)firstNumber->value);
-	if(entry->scope_size != -1 && (entry->type == Integer_type || entry->type == Character_type || entry->type == Bool_type)){
+	if(entry->isValueAvailable && (entry->type == Integer_type || entry->type == Character_type || entry->type == Bool_type)){
+		isChanged = true;
 		if(entry->type == Integer_type){
 			*val 		= entry->scope_size;
 		}
@@ -391,6 +397,7 @@ void propagateDeclarations(NODE* ptr){
 	}
 	
 	while(declaration_list->bp != declaration_list->children){
+		bool isInitiazlized = false;
 		NODE* declarator = declaration_list->bp; declarator->bp = declarator->const_bp;
 		NODE* ident;
 		if(declarator->symbol == INITIALIZE){ 			//check if the initializer part is correct or not, a = 10, 10 is correct or not
@@ -400,6 +407,7 @@ void propagateDeclarations(NODE* ptr){
 			startPropagation(initializer);
 			int ans; bool ans1; char ans2;
 			if(initializer->symbol == INTEGER){
+				isInitiazlized = true;
 				switch(t){
 					case Integer_type:
 						ans = *((int*)initializer->value);
@@ -417,8 +425,10 @@ void propagateDeclarations(NODE* ptr){
 			}
 			if(initializer->symbol == IDENT){
 				binding* entry = getVaribleInfo((char*)initializer->value);
-				if(entry->scope_size != -1 && (entry->type == Integer_type || entry->type == Character_type || entry->type == Bool_type))
+				if(entry->isValueAvailable && (entry->type == Integer_type || entry->type == Character_type || entry->type == Bool_type)){
+					isInitiazlized = true;
 					variable_value = entry->scope_size;
+					}
 				replaceIdent(initializer);	
 			}
 		}
@@ -439,6 +449,7 @@ void propagateDeclarations(NODE* ptr){
 		char* identifier_name = (char*)ident->value;
 		binding* entry = new binding(identifier_name, t, variable_value);
 		entry->scope_size = variable_value;
+		entry->isValueAvailable = isInitiazlized;
 		if(symbol_table-bp == sizeAssigned)
 			increaseStackSize();
 		*(symbol_table++) = *entry;
@@ -467,6 +478,7 @@ void constantFolding(NODE* p){
 		constantFolding(firstNumber);
 		constantFolding(secondNumber);
 		if(firstNumber->symbol==INTEGER && secondNumber->symbol == INTEGER){
+			isChanged = true;
 			int* val = (int*)malloc(sizeof(int));
 			switch(p->symbol){
 				case PLUS:
@@ -546,9 +558,11 @@ void constantFolding(NODE* p){
 		else if(firstNumber->symbol == INTEGER && *((int*)firstNumber->value)==0){	
 			int* val = (int*)malloc(sizeof(int));
 			if(p->symbol == PLUS || p->symbol == LOGICAL_OR || p->symbol == INCLUSIVE_OR || p->symbol == EXCLUSIVE_OR){
-				*p = *secondNumber;
+				isChanged 	= true;
+				*p 			= *secondNumber;
 			}
 			else if(p->symbol == MULT || p->symbol == LEFT_SHIFT || p->symbol == RIGHT_SHIFT || p->symbol == REMAINDER || p->symbol == DIVIDE || p->symbol == AND || p->symbol == LOGICAL_AND){
+				isChanged 	= true;
 				*val = 0;
 				free(firstNumber->value); free(secondNumber->value);
 				p->numChildren = 0;
@@ -562,10 +576,12 @@ void constantFolding(NODE* p){
 		else if(secondNumber->symbol == INTEGER && *((int*)secondNumber->value)==0){
 			int* val = (int*)malloc(sizeof(int));
 			if(p->symbol == PLUS || p->symbol == SUB || p->symbol == LOGICAL_OR || p->symbol == INCLUSIVE_OR || p->symbol == EXCLUSIVE_OR || p->symbol == LEFT_SHIFT || p->symbol == RIGHT_SHIFT){
+				isChanged 	= true;
 				*p = *firstNumber;
 			}
 			else if(p->symbol == MULT || p->symbol == AND || p->symbol == LOGICAL_AND){
 				*val = 0;
+				isChanged 	= true;
 				free(firstNumber->value); free(secondNumber->value);
 				p->numChildren = 0;
 				p->children = p->const_bp;
@@ -583,9 +599,11 @@ void constantFolding(NODE* p){
 			int* val = (int*)malloc(sizeof(int));
 			if(p->symbol == AND || p->symbol == LOGICAL_AND || (*((int*)firstNumber->value)==1 && (p->symbol == MULT))){
 				*p = *secondNumber;
+				isChanged 	= true;
 			}
 			else if(p->symbol == LOGICAL_OR || p->symbol == INCLUSIVE_OR){
 				*val = 1;
+				isChanged 	= true;
 				free(firstNumber->value); free(secondNumber->value);
 				p->numChildren = 0;
 				p->children = p->const_bp;
@@ -599,9 +617,11 @@ void constantFolding(NODE* p){
 			int* val = (int*)malloc(sizeof(int));
 			if(p->symbol == AND || p->symbol == LOGICAL_AND || (*((int*)secondNumber->value)==1 && (p->symbol == MULT || p->symbol == DIVIDE))){
 				*p = *firstNumber;
+				isChanged 	= true;
 			}
 			else if(p->symbol == LOGICAL_OR || p->symbol == INCLUSIVE_OR){
 				*val = 1;
+				isChanged 	= true;
 				free(firstNumber->value); free(secondNumber->value);
 				p->numChildren = 0;
 				p->children = p->const_bp;
@@ -621,6 +641,7 @@ void constantFolding(NODE* p){
 		constantFolding(trueBlock);
 		constantFolding(falseBlock);
 		if(cond->symbol == INTEGER){
+			isChanged	= true;
 			if (*((int*)cond->value) != 0)
 				*p = *trueBlock;
 			else{
@@ -638,8 +659,10 @@ void constantFolding(NODE* p){
 		NODE* loop = p->bp++;
 		constantFolding(cond);
 		constantFolding(loop);
-		if(cond->symbol == INTEGER && *((int*)cond->value) == 0)
+		if(cond->symbol == INTEGER && *((int*)cond->value) == 0){
+			isChanged = true;
 			*p = *(new NODE(BLOCK, NULL, 0));
+		}
 		return;
 	}
 	while(p->bp != p->children){
@@ -1962,7 +1985,7 @@ binding* getVaribleInfo(char* k){
 	return NULL;
 }
 
-void putVal(char* k, int t){
+void putVal(char* k, int t, bool isAvailable){
 	binding* curr_ptr = symbol_table - 1;
 	while(curr_ptr != bp){
 		if(curr_ptr->type == Block){
@@ -1971,6 +1994,7 @@ void putVal(char* k, int t){
 		}
 		if(strcmp(k,curr_ptr->identifier)==0){
 			curr_ptr->scope_size = t;
+			curr_ptr->isValueAvailable = isAvailable;
 			return;
 		}
 		curr_ptr--;

@@ -18,13 +18,14 @@ typedef enum Type SYMBOL_TYPE;
 
 class binding{
 	public:
+		bool isValueAvailable;
 		int numPointer;		// Added to take care of the number of pointers in a variable. eg. int*** l, numPointer = 3
 		char* identifier;
 		SYMBOL_TYPE type;
 		SYMBOL_TYPE ret_type;	//The return type of functions;
 		SYMBOL_TYPE* par_types;	//The type of parameters
 		int* par_pointers;		//The number of pointers in parameters;
-		int numPar;
+		int numPar;				//Number of parameters in a function;
 		int scope_size;		//Also the register assigned to a variable;
 		binding(char* id, SYMBOL_TYPE t, int size){
 			numPointer  = 0;
@@ -34,5 +35,6 @@ class binding{
 			par_pointers= 0;
 			scope_size	= size;
 			numPar		= 0;
+			isValueAvailable = false;
 		}
 };
