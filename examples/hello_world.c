@@ -5,23 +5,34 @@
 /*	return m + t;*/
 /*}*/
 
-_Bool bt(int k, char c, _Bool mm){
+/*_Bool bt(int k, char c, _Bool mm){*/
 /*	int kk = k + c + mm;*/
-	return 0;
-}
+/*	return 0;*/
+/*}*/
 
-/*char ct(int k, char c, _Bool mm){*/
+/*char ct(int k, char c, _Bool mm){*/ 
 /*	int kk = k + c + mm;*/
 /*	return kk;*/
 /*}*/
-int main()
-{
+/*int main()*/
+/*{*/
 /*	int kk 	= it(1,1);*/
 /*	_Bool t1 = 1;*/
-	char ll = bt(10, 'a', 1) + 'a';
+/*	char ll = bt(10, 'a', 1) + 'a';*/
 /*	_Bool las	= ct(10, 'a', 0);*/
 /*	char* mmmm = "The int is %d \t The char is %c \t The bool is %d\n"; */
 /*	printf(mmmm,kk,ll,las);*/
-}	
+/*}	*/
 
+int main(){
+	int p;
+	int k = 10 + 5;
+	int m;
+	int l;
+	m = k + l;
+	if(m){
+		return m;
+	}
+/*	printf("The answer is %d\n", m);*/
+}
 

@@ -30,6 +30,7 @@ void initialize_stack();
 void increaseStackSize();
 void printStack();
 void printEntry(binding);
+void putVal(char*, int);
 
 string replaceCharacters(string);
 string currBlock;
@@ -60,13 +61,16 @@ void constantFolding(NODE*);
 void constantPropagation(NODE*);
 void startPropagation(NODE*);
 void propagateDeclarations(NODE*);
+void propagateFunction(NODE*);
+void replaceIdent(NODE*);
 
 
-//void constantPropagation(NODE* p){
-//	initialize_stack();
-//	startPropagation(p);
-//	exitScope();
-//}
+void constantPropagation(NODE* p){
+	initialize_stack();
+	startPropagation(p);
+	exitScope();
+	free(bp);
+}
 int
 main(int argc, char **argv)
 {
@@ -94,6 +98,7 @@ main(int argc, char **argv)
 	printTree(abstract_syntax_tree);
 	cout << "\n\n";
 	constantFolding(abstract_syntax_tree);
+	constantPropagation(abstract_syntax_tree);
 	printTree(abstract_syntax_tree);
 	cout << "\n\n";
   	cc.open("cc.ll");
@@ -106,72 +111,250 @@ main(int argc, char **argv)
 }
 
 
-//void startPropagation(NODE* p){
-//	if(p->symbol == DECLARATION){
-//		propagateDeclarations(p); return;
+void startPropagation(NODE* ptr){
+	if(ptr == NULL || ptr->symbol == INTEGER||ptr->symbol == STRING || ptr->symbol == IDENT) return;
+	if(ptr->symbol == ASSIGN){
+		ptr->bp 			= ptr->const_bp;
+		NODE* lval 			= ptr->bp++;
+		char* variableName 	= (char*)lval->value;
+		NODE* rval 			= ptr->bp++;
+		startPropagation(rval);
+		if(rval->symbol == IDENT){
+			int* val = (int*)malloc(sizeof(int));
+			binding* entry = getVaribleInfo((char*)rval->value);
+			if(entry->scope_size != -1 && (entry->type == Integer_type || entry->type == Character_type || entry->type == Bool_type)){
+				if(entry->type == Integer_type){
+					*val 		= entry->scope_size;
+				}
+				else if(entry->type == Character_type){
+					char ans 	= entry->scope_size;
+					*val 		= ans;
+				}
+				else if(entry->type == Bool_type){
+					bool ans 	= entry->scope_size;
+					*val 		= ans;
+				}
+				rval->symbol 		= INTEGER;
+				rval->value 		= (void*)val;
+				rval->numChildren 	= 0;
+				rval->bp			= rval->const_bp;
+				rval->children		= rval->const_bp;
+				putVal(variableName, *val);
+			}
+			else
+				putVal(variableName, -1);
+		}
+		else{
+			putVal(variableName, -1);
+		}
+		return;
+	}
+//	else if(ptr->symbol == ASSIGN||ptr->symbol == MUL_ASSIGNN || ptr->symbol == DIV_ASSIGNN || ptr->symbol == MOD_ASSIGNN || ptr->symbol == ADD_ASSIGNN || ptr->symbol == SUB_ASSIGNN || ptr->symbol == LEFT_ASSIGNN || ptr->symbol == RIGHT_ASSIGNN || ptr->symbol == XOR_ASSIGNN || ptr->symbol == AND_ASSIGNN || ptr->symbol == OR_ASSIGNN){
+//		ptr->bp		= ptr->const_bp;
+//		NODE* lval	= ptr->bp++;
+//		NODE* rval	= ptr->bp++;
+//		return;
 //	}
-//}
+	else if(ptr->symbol == PLUS || ptr->symbol == SUB || ptr->symbol == MULT || ptr->symbol == DIVIDE || ptr->symbol == REMAINDER || ptr->symbol == LEFT_SHIFT || ptr->symbol == RIGHT_SHIFT || ptr->symbol == EXCLUSIVE_OR || ptr->symbol == INCLUSIVE_OR || ptr->symbol == AND || ptr->symbol == LOGICAL_AND || ptr->symbol == LOGICAL_OR || ptr->symbol == LESS_THAN || ptr->symbol == GREATER_THAN || ptr->symbol == LESS_THAN_EQUAL_TO || ptr->symbol == GREATER_THAN_EQUAL_TO || ptr->symbol == EQUAL_TO || ptr->symbol == NOT_EQUAL_TO){
+		ptr->bp = ptr->const_bp;
+		NODE* firstNumber 	= ptr->bp++;
+		NODE* secondNumber 	= ptr->bp++;
+		startPropagation(firstNumber);
+		startPropagation(secondNumber);
+		if(firstNumber->symbol == IDENT)
+			replaceIdent(firstNumber);
+		if(secondNumber->symbol == IDENT){
+			replaceIdent(secondNumber);
+		return;
+		}
+	}
+	else if(ptr->symbol == RETURNN && ptr->numChildren != 0){
+		NODE* returnVal = ptr->const_bp;
+		startPropagation(returnVal);
+		if(returnVal->symbol == IDENT) replaceIdent(returnVal);
+		return;
+	}
+	else if(ptr->symbol == IFTHEN || ptr->symbol == WHILEE){
+		ptr->bp 	= ptr->const_bp;
+		NODE* cond 	= ptr->const_bp; 
+		while(ptr->bp != ptr->children) startPropagation(ptr->bp++);
+		if(cond->symbol == IDENT)
+			replaceIdent(cond);
+		return;
+	}
+	else if(ptr->symbol == DECLARATION){
+		ptr->bp = ptr->const_bp;
+		propagateDeclarations(ptr);
+		return;
+	}
+	else if(ptr->symbol == FUNC_DEF){
+		ptr->bp = ptr->const_bp;
+		propagateFunction(ptr);
+		return;
+	}
+	else if(ptr->symbol == BLOCK){
+		enterScope();
+		ptr->bp = ptr->const_bp;
+		while(ptr->bp != ptr->children){
+			startPropagation(ptr->bp++);
+		}
+		exitScope();
+		return;
+	}
+	else{
+		ptr->bp = ptr->const_bp;
+		while(ptr->bp != ptr->children){
+			startPropagation(ptr->bp++);
+		}
+	}
+	return;
+}
 
-//int propagateDeclarations(NODE* ptr){
-//	ptr->bp = ptr->const_bp;
-//	NODE* declaration_specifiers = ptr->bp++;
-//	NODE declaration_list = ptr->bp++;
-//	SYMBOL_TYPE t = Variable;
-//	int numDeclarations = declaration_list->children - declaration_list->bp;
-//	while(declaration_list.bp != declaration_list.children){
-//		NODE* ident;
-//		if((declaration_list.bp)->symbol == INITIALIZE){ 			//check if the initializer part is correct or not, a = 10, 10 is correct or not
-//			NODE* k = declaration_list.bp;
-//			ident  = k->bp++;
-//			while(ident->symbol == POINTER) ident = ident->bp;
-//			NODE* initializer = k->bp++;
-//			if (ident->symbol == FUNC_DECLARATOR){ 
-//				cout << "Function is declared as a variable"<<'\n';
-//				return -1;
-//			}
-//			if (check_semantics(initializer) == -1)	return -1;
-//		}
-//		else if((declaration_list.bp)->symbol == FUNC_DECLARATOR){	//In the case of declaration of fucntion like "void printf();"
-//			t = Function;
-//			NODE* k = declaration_list.bp;// k is the FUNC_DECLARATOR
-//			ident = k->bp++;
-//			if(ident->symbol == FUNC_DECLARATOR){
-//				cout << "Declaration of a function returning a function" <<endl;
-//				return -1;
-//			}
-//		}
-//		else     													//In case when there is simple declaration like int b,v,d; No initializing and no function declaraions
-//			ident = declaration_list.bp;
-//		while (ident->symbol == POINTER){
-//			ident = ident->bp;			// To take care of pointers while declaraion
-//		}
-//		if(ident->symbol == FUNC_DECLARATOR){
-//			t = Function;
-//			ident = ident->bp;
-//			if(ident->symbol == FUNC_DECLARATOR){
-//				cout << "Declaration of a function returning a function" <<endl;
-//				return -1;
-//			}
-//		}
-//		char* identifier_name = (char*)ident->value;
-//		if(t==Variable && isPreviouslyDeclared(identifier_name)){
-//			return -1;
-//		}
-//		if(t==Function){
-//			int exists = doesExist(identifier_name, Function);
-//			if(exists == 0){
-//				declaration_list.bp++; continue;
-//			}
-//		}
-//		binding* entry = new binding(identifier_name, t, 0);
-//		if(symbol_table-bp == sizeAssigned)
-//			increaseStackSize();
-//		*(symbol_table++) = *entry;
-//		numEntries++;
-//		declaration_list.bp++;
-//	}
-//	return 0;
-//}
+void replaceIdent(NODE* firstNumber){
+	int* val = (int*)malloc(sizeof(int));
+	binding* entry = getVaribleInfo((char*)firstNumber->value);
+	if(entry->scope_size != -1 && (entry->type == Integer_type || entry->type == Character_type || entry->type == Bool_type)){
+		if(entry->type == Integer_type){
+			*val 		= entry->scope_size;
+		}
+		else if(entry->type == Character_type){
+			char ans 	= entry->scope_size;
+			*val 		= ans;
+		}
+		else if(entry->type == Bool_type){
+			bool ans 	= entry->scope_size;
+			*val 		= ans;
+		}
+		firstNumber->symbol 		= INTEGER;
+		firstNumber->value 			= (void*)val;
+		firstNumber->numChildren 	= 0;
+		firstNumber->children		= firstNumber->const_bp;
+		firstNumber->bp				= firstNumber->const_bp;
+	}
+	return;
+}
+
+void propagateFunction(NODE* ptr){
+	ptr->bp = ptr->const_bp;
+	ptr->bp++;
+	NODE* ident				= (ptr->bp++); ident->bp = ident->const_bp;
+	NODE* function_body 	= (ptr->bp++); function_body->bp = function_body->const_bp;
+	while (ident->symbol == POINTER) ident = ident->const_bp;								// To take care of pointers while declaraion
+	NODE* name 				= (ident->bp++); name->bp = name->const_bp;
+	NODE* parameters		= (ident->bp == ident->children)?(NULL):(ident->bp++);	//NULL means no parameters
+	char* identifier_name 	= (char*)name->value;
+	binding* entry = new binding(identifier_name, Function, -1);
+	if(symbol_table-bp == sizeAssigned)
+		increaseStackSize();
+	*(symbol_table++) = *entry;
+	numEntries++;
+	
+	enterScope();
+//	if(parameters->symbol == PARAMETERS) cout << "PARAMETER
+	bool hasSeenEllipsis = false;
+	if (parameters!=NULL){
+		parameters->bp = parameters->const_bp;
+		while(parameters->bp != parameters->children){
+			if(parameters->bp->symbol != ELLIPSISS){
+				NODE* declaration = parameters->bp; declaration->bp = declaration->const_bp;
+				declaration->bp++;
+				NODE* variable = declaration->bp++;
+				while(variable->symbol == POINTER) variable = variable->const_bp;
+				char* identifier_name = (char*)variable->value;
+				binding* en = new binding(identifier_name, Variable, -1);
+				if(symbol_table - bp == sizeAssigned)
+					increaseStackSize();
+				*(symbol_table++) = *en;
+				numEntries++;
+			}
+			else if(parameters->bp->symbol == ELLIPSISS){
+				hasSeenEllipsis = true;
+			}
+			parameters->bp++;
+		}
+	}
+	while(function_body->bp != function_body->children){
+		startPropagation(function_body->bp++);
+	}
+	exitScope();
+	return;
+}
+
+
+
+
+
+void propagateDeclarations(NODE* ptr){
+	ptr->bp = ptr->const_bp;
+	NODE* declaration_specifier = ptr->bp++; declaration_specifier->bp = declaration_specifier->const_bp;
+	NODE* declaration_list = ptr->bp++; declaration_list->bp = declaration_list->const_bp;
+	SYMBOL_TYPE t = Variable;
+	int numDeclarations = declaration_list->children - declaration_list->bp;
+	int variable_value = -1;
+	if(declaration_specifier->symbol == CONSTT) declaration_specifier = declaration_specifier->const_bp;
+	switch (declaration_specifier->symbol){
+		case TYPE_INT:
+			t = Integer_type;
+			break;
+		case TYPE_BOOL:
+			t = Bool_type;
+			break;
+		case TYPE_CHAR:
+			t = Character_type;
+			break;
+	}
+	
+	while(declaration_list->bp != declaration_list->children){
+		NODE* declarator = declaration_list->bp; declarator->bp = declarator->const_bp;
+		NODE* ident;
+		if(declarator->symbol == INITIALIZE){ 			//check if the initializer part is correct or not, a = 10, 10 is correct or not
+			ident  = declarator->bp++;
+			while(ident->symbol == POINTER) ident = ident->bp;
+			NODE* initializer = declarator->bp++;
+			startPropagation(initializer);
+			int ans; bool ans1; char ans2;
+			if(initializer->symbol == INTEGER){
+				switch(t){
+					case Integer_type:
+						ans = *((int*)initializer->value);
+						variable_value = ans;
+						break;
+					case Bool_type:
+						ans1 = *((int*)initializer->value);
+						variable_value = ans1;
+						break;
+					case Character_type:
+						ans2 = *((int*)initializer->value);
+						variable_value = ans2;
+						break;
+				}
+			}
+		}
+		else if(declarator->symbol == FUNC_DECLARATOR){	//In the case of declaration of fucntion like "void printf();"
+			t = Function;
+			ident = declarator->bp++;
+		}
+		else     													//In case when there is simple declaration like int b,v,d; No initializing and no function declaraions
+			ident = declarator;
+		while (ident->symbol == POINTER){
+			ident = ident->bp;			// To take care of pointers while declaraion
+		}
+		if(ident->symbol == FUNC_DECLARATOR){
+			t = Function;
+			ident = ident->bp;
+		}
+		char* identifier_name = (char*)ident->value;
+		binding* entry = new binding(identifier_name, t, variable_value);
+		entry->scope_size = variable_value;
+		if(symbol_table-bp == sizeAssigned)
+			increaseStackSize();
+		*(symbol_table++) = *entry;
+		numEntries++;
+		declaration_list->bp++;
+	}
+	return;
+}
+
 
 
 
@@ -265,7 +448,7 @@ void constantFolding(NODE* p){
 			p->children = p->const_bp;
 			p->bp = p->const_bp;
 			free(p->bp);
-			p->value = val;
+			p->value = (void*)val;
 		}
 		else if(firstNumber->symbol == INTEGER && *((int*)firstNumber->value)==0){	
 			int* val = (int*)malloc(sizeof(int));
@@ -280,7 +463,7 @@ void constantFolding(NODE* p){
 				p->bp 		= p->const_bp;
 				free(p->bp);
 				p->symbol 	= INTEGER;
-				p->value 	= val;
+				p->value 	= (void*)val;
 			}
 		}
 		else if(secondNumber->symbol == INTEGER && *((int*)secondNumber->value)==0){
@@ -296,7 +479,7 @@ void constantFolding(NODE* p){
 				p->bp 		= p->const_bp;
 				free(p->bp);
 				p->symbol 	= INTEGER;
-				p->value 	= val;
+				p->value 	= (void*)val;
 			}
 			else if(p->symbol == DIVIDE || p->symbol == REMAINDER){
 				cout << "Division by 0\n";
@@ -316,7 +499,7 @@ void constantFolding(NODE* p){
 				p->bp 		= p->const_bp;
 				free(p->bp);
 				p->symbol 	= INTEGER;
-				p->value 	= val;
+				p->value 	= (void*)val;
 			}
 		}
 		else if(secondNumber->symbol == INTEGER && *((int*)secondNumber->value)!=0){
@@ -332,7 +515,7 @@ void constantFolding(NODE* p){
 				p->bp 		= p->const_bp;
 				free(p->bp);
 				p->symbol 	= INTEGER;
-				p->value 	= val;
+				p->value 	= (void*)val;
 			}
 		}
 		return;
@@ -414,7 +597,7 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 	}
 	if(p->symbol == ASSIGN||p->symbol == MUL_ASSIGNN || p->symbol == DIV_ASSIGNN || p->symbol == MOD_ASSIGNN || p->symbol == ADD_ASSIGNN || p->symbol == SUB_ASSIGNN || p->symbol == LEFT_ASSIGNN || p->symbol == RIGHT_ASSIGNN || p->symbol == XOR_ASSIGNN || p->symbol == AND_ASSIGNN || p->symbol == OR_ASSIGNN){
 		p->bp = p->const_bp;
-		if(p->bp->symbol == INTEGER){
+		if(p->bp->symbol != IDENT){
 			cout << "rvalue given on the left side of =\n";
 			exit(0);
 		}
@@ -1559,11 +1742,6 @@ int addFunction(NODE* ptr){
 			}
 			else if(parameters->bp->symbol == ELLIPSISS){
 				hasSeenEllipsis = true;
-				binding* en = new binding("Ellipsis", Variable, 0);
-				if(symbol_table - bp == sizeAssigned)
-					increaseStackSize();
-				*(symbol_table++) = *en;
-				numEntries++;
 			}
 			parameters->bp++;
 		}
@@ -1689,6 +1867,22 @@ binding* getVaribleInfo(char* k){
 		curr_ptr--;
 	}
 	return NULL;
+}
+
+void putVal(char* k, int t){
+	binding* curr_ptr = symbol_table - 1;
+	while(curr_ptr != bp){
+		if(curr_ptr->type == Block){
+			curr_ptr--;
+			continue;
+		}
+		if(strcmp(k,curr_ptr->identifier)==0){
+			curr_ptr->scope_size = t;
+			return;
+		}
+		curr_ptr--;
+	}
+	return;
 }
 
 int doesExist(char* k, SYMBOL_TYPE t){
