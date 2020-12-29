@@ -330,11 +330,24 @@ void propagateFunction(NODE* ptr){
 		while(parameters->bp != parameters->children){
 			if(parameters->bp->symbol != ELLIPSISS){
 				NODE* declaration = parameters->bp; declaration->bp = declaration->const_bp;
-				declaration->bp++;
+				NODE* declaration_specifier 	= declaration->bp++;
+				while (declaration_specifier->symbol	== CONSTT) declaration_specifier = declaration_specifier->const_bp;
+				SYMBOL_TYPE t;	
+				switch (declaration_specifier->symbol){
+					case TYPE_INT:
+						t = Integer_type;
+						break;
+					case TYPE_BOOL:
+						t = Bool_type;
+						break;
+					case TYPE_CHAR:
+						t = Character_type;
+						break;
+				}
 				NODE* variable = declaration->bp++;
 				while(variable->symbol == POINTER) variable = variable->const_bp;
 				char* identifier_name = (char*)variable->value;
-				binding* en = new binding(identifier_name, Variable, -1);
+				binding* en = new binding(identifier_name, t, -1);
 				if(symbol_table - bp == sizeAssigned)
 					increaseStackSize();
 				*(symbol_table++) = *en;
