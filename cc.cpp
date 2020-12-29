@@ -14,6 +14,9 @@ int yyparse();
 extern "C" FILE *yyin;
 extern NODE* abstract_syntax_tree;
 extern void printTree(NODE*);
+extern NODE* createUnaryNode(SYMBOL, NODE*);
+extern NODE* createBinaryNode(SYMBOL, NODE*, NODE*);
+extern void addChild(NODE*, NODE*);
 int check_semantics(NODE*);
 int addDeclaration(NODE*);
 int addFunction(NODE*);
@@ -119,7 +122,10 @@ void startPropagation(NODE* ptr){
 		char* variableName 	= (char*)lval->value;
 		NODE* rval 			= ptr->bp++;
 		startPropagation(rval);
-		if(rval->symbol == IDENT){
+		if(rval->symbol == INTEGER){
+			putVal(variableName, *((int*)rval->value));
+		}
+		else if(rval->symbol == IDENT){
 			int* val = (int*)malloc(sizeof(int));
 			binding* entry = getVaribleInfo((char*)rval->value);
 			if(entry->scope_size != -1 && (entry->type == Integer_type || entry->type == Character_type || entry->type == Bool_type)){
@@ -149,12 +155,79 @@ void startPropagation(NODE* ptr){
 		}
 		return;
 	}
-//	else if(ptr->symbol == ASSIGN||ptr->symbol == MUL_ASSIGNN || ptr->symbol == DIV_ASSIGNN || ptr->symbol == MOD_ASSIGNN || ptr->symbol == ADD_ASSIGNN || ptr->symbol == SUB_ASSIGNN || ptr->symbol == LEFT_ASSIGNN || ptr->symbol == RIGHT_ASSIGNN || ptr->symbol == XOR_ASSIGNN || ptr->symbol == AND_ASSIGNN || ptr->symbol == OR_ASSIGNN){
-//		ptr->bp		= ptr->const_bp;
-//		NODE* lval	= ptr->bp++;
-//		NODE* rval	= ptr->bp++;
-//		return;
-//	}
+	else if(ptr->symbol == MUL_ASSIGNN || ptr->symbol == DIV_ASSIGNN || ptr->symbol == MOD_ASSIGNN || ptr->symbol == ADD_ASSIGNN || ptr->symbol == SUB_ASSIGNN || ptr->symbol == LEFT_ASSIGNN || ptr->symbol == RIGHT_ASSIGNN || ptr->symbol == XOR_ASSIGNN || ptr->symbol == AND_ASSIGNN || ptr->symbol == OR_ASSIGNN){
+		bool convert	= false;
+		ptr->bp			= ptr->const_bp;
+		NODE* lval		= ptr->bp++;
+		NODE* rval		= ptr->bp++;
+		startPropagation(rval);
+		char* lvarName	= (char*)lval->value;
+		binding* lentry 	= getVaribleInfo(lvarName);
+		if(lentry->scope_size != -1 && (lentry->type == Integer_type || lentry->type == Character_type || lentry->type == Bool_type)){
+			if(lentry->scope_size == 0 || (lentry->scope_size == 1 && ptr->symbol == MUL_ASSIGNN) || ptr->symbol == OR_ASSIGNN || ptr->symbol == AND_ASSIGNN)
+				convert = true;
+		}
+		if(rval->symbol == INTEGER){
+			int v = *((int*)rval->value);
+			if( v == 0 || (v == 1 && (ptr->symbol == MUL_ASSIGNN||ptr->symbol == DIV_ASSIGNN)) || ptr->symbol == OR_ASSIGNN || ptr->symbol == AND_ASSIGNN)
+					convert = true;
+			if(lentry->scope_size != -1 && (lentry->type == Integer_type || lentry->type == Character_type || lentry->type == Bool_type))
+					convert = true;			  	
+		}
+		if(rval->symbol == IDENT){
+			char* rvarName	= (char*)rval->value;
+			binding* rentry 	= getVaribleInfo(rvarName);
+			if(rentry->scope_size != -1 && (rentry->type == Integer_type || rentry->type == Character_type || rentry->type == Bool_type)){
+				if(rentry->scope_size == 0 || (rentry->scope_size == 1 && (ptr->symbol == MUL_ASSIGNN||ptr->symbol == DIV_ASSIGNN)) || ptr->symbol == OR_ASSIGNN || ptr->symbol == AND_ASSIGNN)
+					convert = true;
+			}
+			if((lentry->scope_size != -1 && (lentry->type == Integer_type || lentry->type == Character_type || lentry->type == Bool_type))
+			  &&(rentry->scope_size != -1 && (rentry->type == Integer_type || rentry->type == Character_type || rentry->type == Bool_type)))
+			  	convert = true;
+		}
+		if(convert){
+			SYMBOL op;
+			switch(ptr->symbol){
+				case MUL_ASSIGNN:
+					op = MULT;
+					break;
+				case DIV_ASSIGNN:
+					op = DIVIDE;
+					break;
+				case MOD_ASSIGNN:
+					op = REMAINDER;
+					break;
+				case ADD_ASSIGNN:
+					op = PLUS;
+					break;
+				case SUB_ASSIGNN:
+					op = SUB;
+					break;
+				case LEFT_ASSIGNN:
+					op = LEFT_SHIFT;
+					break;
+				case RIGHT_ASSIGNN:
+					op = RIGHT_SHIFT;
+					break;
+				case XOR_ASSIGNN:
+					op = EXCLUSIVE_OR;
+					break;
+				case AND_ASSIGNN:
+					op = AND;
+					break;
+				case OR_ASSIGNN:
+					op = INCLUSIVE_OR;
+					break;
+			}
+			NODE* copiedlVal 	= new NODE(IDENT,lvarName,0) ;
+			NODE* rightTree 	= createBinaryNode(op, copiedlVal, rval);
+			startPropagation(rightTree);
+			NODE* newTree		= createBinaryNode(ASSIGN, lval, rightTree);
+			*ptr				= *newTree;
+		}
+		putVal(lvarName, -1);
+		return;
+	}
 	else if(ptr->symbol == PLUS || ptr->symbol == SUB || ptr->symbol == MULT || ptr->symbol == DIVIDE || ptr->symbol == REMAINDER || ptr->symbol == LEFT_SHIFT || ptr->symbol == RIGHT_SHIFT || ptr->symbol == EXCLUSIVE_OR || ptr->symbol == INCLUSIVE_OR || ptr->symbol == AND || ptr->symbol == LOGICAL_AND || ptr->symbol == LOGICAL_OR || ptr->symbol == LESS_THAN || ptr->symbol == GREATER_THAN || ptr->symbol == LESS_THAN_EQUAL_TO || ptr->symbol == GREATER_THAN_EQUAL_TO || ptr->symbol == EQUAL_TO || ptr->symbol == NOT_EQUAL_TO){
 		ptr->bp = ptr->const_bp;
 		NODE* firstNumber 	= ptr->bp++;
@@ -329,6 +402,12 @@ void propagateDeclarations(NODE* ptr){
 						break;
 				}
 			}
+			if(initializer->symbol == IDENT){
+				binding* entry = getVaribleInfo((char*)initializer->value);
+				if(entry->scope_size != -1 && (entry->type == Integer_type || entry->type == Character_type || entry->type == Bool_type))
+					variable_value = entry->scope_size;
+				replaceIdent(initializer);	
+			}
 		}
 		else if(declarator->symbol == FUNC_DECLARATOR){	//In the case of declaration of fucntion like "void printf();"
 			t = Function;
@@ -338,6 +417,7 @@ void propagateDeclarations(NODE* ptr){
 			ident = declarator;
 		while (ident->symbol == POINTER){
 			ident = ident->bp;			// To take care of pointers while declaraion
+			t = Pointer_type;
 		}
 		if(ident->symbol == FUNC_DECLARATOR){
 			t = Function;

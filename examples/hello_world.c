@@ -25,14 +25,10 @@
 /*}	*/
 
 int main(){
-	int p;
-	int k = 10 + 5;
-	int m;
-	int l;
-	m = k + l;
-	if(m){
-		return m;
-	}
+	_Bool t = 100;
+	int l = t || 0, k, p;
+	k = 10;
+	p = k;
 /*	printf("The answer is %d\n", m);*/
 }
 
