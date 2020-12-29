@@ -10,6 +10,9 @@ NODE* createUnaryNode(SYMBOL, NODE*);
 NODE* createBinaryNode(SYMBOL, NODE*, NODE*);
 void addChild(NODE*, NODE*);
 void printTree(NODE*);
+void remove(NODE*);
+void markWholeDeclarations(NODE*);
+void removeWholeDeclarations(NODE*);
 // stuff from flex that bison needs to know about:
 extern "C" int yylex();
 int yyparse();
@@ -609,6 +612,105 @@ void addChild(NODE* parent, NODE* child){
 	}
 	return;
 }
+
+void remove(NODE* ptr){
+	if(ptr == NULL || ptr->symbol == INTEGER||ptr->symbol == STRING || ptr->symbol == IDENT) return;
+	if(ptr->symbol == BLOCK || ptr->symbol == CODE_SECTIONS || ptr->symbol == DECLARATION_LIST){
+//		if(ptr->numChildren == 0) return;
+//		printTree(ptr); cout << "\n\n";
+		ptr->bp = ptr->const_bp;
+		int remainingChildren = (ptr->children - ptr->const_bp);
+		while(ptr->bp != ptr->children){
+			if(ptr->bp->inSymbolTable && ptr->bp->isNotNeeded){
+				remainingChildren--;
+			}
+			ptr->bp++;
+		}
+		if(remainingChildren == 0){
+			ptr->inSymbolTable = true; ptr->isNotNeeded = true; return;			
+		}
+		ptr->bp = ptr->const_bp;
+		NODE* newList = (NODE*)malloc(remainingChildren*sizeof(NODE));
+		ptr->const_bp = newList;
+		while(ptr->bp != ptr->children){
+			if( !ptr->bp->inSymbolTable || !ptr->bp->isNotNeeded){
+				*(newList++) = *(ptr->bp);
+			}
+			ptr->bp++;
+		}
+		ptr->bp 		= ptr->const_bp;
+		ptr->children	= newList;
+		while(ptr->bp!= ptr->children){
+			remove(ptr->bp++);
+		}
+	}
+	else{
+		ptr->bp = ptr->const_bp;
+		while(ptr->bp != ptr->children){
+			remove(ptr->bp++);
+		}
+		return;
+	}
+}
+
+void markWholeDeclarations(NODE* ptr){
+	if(ptr == NULL || ptr->symbol == INTEGER||ptr->symbol == STRING || ptr->symbol == IDENT || ptr->symbol == RETURNN || ptr->symbol == ELLIPSISS) return;
+	else if(ptr->symbol == DECLARATION){
+		ptr->bp = ptr->const_bp+1;
+		if(ptr->bp->inSymbolTable && ptr->bp->isNotNeeded){
+			ptr->inSymbolTable = true; ptr->isNotNeeded = true;
+		}
+	}
+	else{
+		ptr->bp = ptr->const_bp;
+		while(ptr->bp != ptr->children){
+			markWholeDeclarations(ptr->bp++);
+		}
+		return;
+	}
+}
+
+
+void removeWholeDeclarations(NODE* ptr){
+	if(ptr == NULL || ptr->symbol == INTEGER||ptr->symbol == STRING || ptr->symbol == IDENT || ptr->symbol == ELLIPSISS) return;
+	if(ptr->symbol == BLOCK || ptr->symbol == CODE_SECTIONS){
+		if(ptr->numChildren == 0) return;
+		ptr->bp = ptr->const_bp;
+		int remainingChildren = (ptr->children - ptr->const_bp);
+		while(ptr->bp != ptr->children){
+			if(ptr->bp->inSymbolTable && ptr->bp->isNotNeeded){
+				remainingChildren--;
+			}
+			ptr->bp++;
+		}
+		if(remainingChildren == 0){
+			ptr->children = ptr->bp; 
+			return;			
+		}
+		ptr->bp = ptr->const_bp;
+		NODE* newList = (NODE*)malloc(remainingChildren*sizeof(NODE));
+		ptr->const_bp = newList;
+		while(ptr->bp != ptr->children){
+			if( !ptr->bp->inSymbolTable || !ptr->bp->isNotNeeded){
+				*(newList++) = *(ptr->bp);
+			}
+			ptr->bp++;
+		}
+		ptr->bp 		= ptr->const_bp;
+		ptr->children	= newList;
+		while(ptr->bp!= ptr->children){
+			removeWholeDeclarations(ptr->bp++);
+		}
+	}
+	else{
+		ptr->bp = ptr->const_bp;
+		while(ptr->bp != ptr->children){
+			removeWholeDeclarations(ptr->bp++);
+		}
+		return;
+	}
+}
+
 
 void printTree(NODE* p){
 	if(p == NULL) cout << "[NULL]";

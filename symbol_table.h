@@ -1,3 +1,4 @@
+#include "ast.h"
 using namespace std;
 
 enum Type{
@@ -18,7 +19,8 @@ typedef enum Type SYMBOL_TYPE;
 
 class binding{
 	public:
-		bool isValueAvailable;
+		NODE* astPointer;
+		bool isValueAvailable;	//Also true if the function is defined, otherwise false
 		int numPointer;		// Added to take care of the number of pointers in a variable. eg. int*** l, numPointer = 3
 		char* identifier;
 		SYMBOL_TYPE type;
@@ -28,13 +30,14 @@ class binding{
 		int numPar;				//Number of parameters in a function;
 		int scope_size;		//Also the register assigned to a variable;
 		binding(char* id, SYMBOL_TYPE t, int size){
-			numPointer  = 0;
-			identifier  = id;
-			type 	    = t;
-			ret_type	= t;
-			par_pointers= 0;
-			scope_size	= size;
-			numPar		= 0;
-			isValueAvailable = false;
+			numPointer  		= 0;
+			identifier  		= id;
+			type 	    		= t;
+			ret_type			= t;
+			par_pointers		= 0;
+			scope_size			= size;
+			numPar				= 0;
+			isValueAvailable 	= false;
+			astPointer			= NULL;
 		}
 };

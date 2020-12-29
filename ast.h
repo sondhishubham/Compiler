@@ -74,19 +74,23 @@ typedef enum Symbol SYMBOL;
 class NODE{
     public:
         NODE(enum Symbol sym, void* val, int nChildren){
-            symbol = sym;
-            value = val;
-            children = (NODE*)malloc(sizeof(NODE)*nChildren);
-            bp = children;
-            const_bp = children;
-            numChildren = nChildren;
+            symbol 			= sym;
+            value 			= val;
+            children 		= (NODE*)malloc(sizeof(NODE)*nChildren);
+            bp 				= children;
+            const_bp 		= children;
+            numChildren 	= nChildren;
+            isNotNeeded		= true;
+            inSymbolTable	= false;
         }
         enum Symbol symbol;
         void* value;
         int numChildren;
         NODE* children;
-        NODE* bp;
+        NODE* bp;	
         NODE* const_bp;
+        bool inSymbolTable;	// The node is removed only if it was the part of symbol table
+        bool isNotNeeded;	// used in removing extra parts of the code
 };
 
 

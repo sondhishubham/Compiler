@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
-#include "ast.h"
+//#include "ast.h"
 #include "symbol_table.h"
 #include "c.tab.hpp"
 #include <fstream>
@@ -17,6 +17,9 @@ extern void printTree(NODE*);
 extern NODE* createUnaryNode(SYMBOL, NODE*);
 extern NODE* createBinaryNode(SYMBOL, NODE*, NODE*);
 extern void addChild(NODE*, NODE*);
+extern void remove(NODE*);
+extern void markWholeDeclarations(NODE*);
+extern void removeWholeDeclarations(NODE*);
 int check_semantics(NODE*);
 int addDeclaration(NODE*);
 int addFunction(NODE*);
@@ -67,7 +70,10 @@ void startPropagation(NODE*);
 void propagateDeclarations(NODE*);
 void propagateFunction(NODE*);
 void replaceIdent(NODE*);
-
+void removeDeadCode(NODE*);
+void markDeadCode(NODE*);
+void markDeclarations(NODE*);
+void markFunctions(NODE*);
 
 void constantPropagation(NODE* p){
 	initialize_stack();
@@ -75,6 +81,18 @@ void constantPropagation(NODE* p){
 	exitScope();
 	free(bp);
 }
+
+void removeDeadCode(NODE*p){
+	initialize_stack();
+//	cout << "I am here\n";
+	markDeadCode(p);
+	remove(p);
+	markWholeDeclarations(p);
+	removeWholeDeclarations(p);
+	exitScope();
+	free(bp);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -86,29 +104,29 @@ main(int argc, char **argv)
   yyin = fopen(filename, "r");
   assert(yyin);
   int ret = yyparse();
-//  printTree(abstract_syntax_tree); cout << '\n'; // iF you are going to print tree, remove check semantics!!!!
 	if(ret != 0){
   		printf("retv = %d\n", ret);
   		exit(0);
 	}
   	initialize_stack();
-   	int ans = check_semantics(abstract_syntax_tree);//Don't check semantics if the code prints syntax tree.
+   	int ans = check_semantics(abstract_syntax_tree);//Don't print tree before check_semantics!!!!
  	exitScope();
  	free(bp);
  	if(ans != 0){
   		printf("retv = %d\n", ans);
   		exit(0);
 	}
-	printTree(abstract_syntax_tree);
-	cout << "\n\n";
+//	printTree(abstract_syntax_tree);
+//	cout << "\n\n";
 	isChanged = true;
 	while(isChanged){
 		isChanged = false;
 		constantFolding(abstract_syntax_tree);
 		constantPropagation(abstract_syntax_tree);
+		removeDeadCode(abstract_syntax_tree);
 	}
-	printTree(abstract_syntax_tree);
-	cout << "\n\n";
+//	printTree(abstract_syntax_tree);
+//	cout << "\n\n";
   	cc.open("cc.ll");
   	initialize_stack();
   	branchNum = 0; stringNum = 0; numWhitespace = 0;
@@ -118,9 +136,186 @@ main(int argc, char **argv)
   	exit(0);
 }
 
+void markDeadCode(NODE* ptr){
+	if(ptr == NULL || ptr->symbol == INTEGER||ptr->symbol == STRING || ptr->symbol == ELLIPSISS)
+		return;
+	else if(ptr->symbol == DECLARATION)
+		markDeclarations(ptr);
+	else if(ptr->symbol == FUNC_DEF){
+		ptr->bp 			= ptr->const_bp;
+		ptr->bp++;
+		NODE* ident 		= ptr->bp++; ident->bp = ident->const_bp;
+		while (ident->symbol == POINTER) ident = ident->const_bp;
+		NODE* name 			= (ident->bp++); name->bp = name->const_bp;
+		char* identifier	= (char*)name->value;
+		string str 			= "main";
+		const char *cstr = str.c_str();
+		if(strcmp(identifier,cstr)==0){ 
+			ptr->isNotNeeded = false;
+		}
+		markFunctions(ptr);
+	}
+	else if(ptr->symbol == FUNC_CALL){
+//		printStack();
+		ptr->bp 		= ptr->const_bp;
+		NODE* ident 	= ptr->bp++;
+		binding* en		= getVaribleInfo((char*)ident->value);
+		NODE* p			= en->astPointer;
+		p->isNotNeeded	= false;
+		if(ptr->bp!=ptr->children){
+			markDeadCode(ptr->bp++);
+		}
+	}
+	else if(ptr->symbol == IDENT){
+		binding* en		= getVaribleInfo((char*)ptr->value);
+		NODE* p			= en->astPointer;
+		p->isNotNeeded	= false;
+	}
+	else if(ptr->symbol == BLOCK){
+		if(ptr->numChildren == 0) return;
+		enterScope();
+		ptr->bp = ptr->const_bp;
+		while(ptr->bp != ptr->children){
+			markDeadCode(ptr->bp++);
+		}
+		exitScope();
+	}
+	else{
+		if(ptr->numChildren > 0){
+			ptr->bp	= ptr->const_bp;
+			while(ptr->bp != ptr->children){
+				markDeadCode(ptr->bp++);
+			}
+		}
+	}
+	return;
+}
+
+
+void markFunctions(NODE* ptr){
+	ptr->bp = ptr->const_bp;
+	ptr->bp++;
+	NODE* ident				= (ptr->bp++); ident->bp = ident->const_bp;
+	NODE* function_body 	= (ptr->bp++); function_body->bp = function_body->const_bp;
+	while (ident->symbol == POINTER) ident = ident->const_bp;								// To take care of pointers while declaraion
+	NODE* name 				= (ident->bp++); name->bp = name->const_bp;
+	NODE* parameters		= (ident->bp == ident->children)?(NULL):(ident->bp++);	//NULL means no parameters
+	char* identifier_name 	= (char*)name->value;
+	int existss				= doesExist(identifier_name, Function);
+	if(existss == 0){
+		binding* e					= getVaribleInfo(identifier_name);
+		NODE* prev_node				= e->astPointer;
+		prev_node->inSymbolTable	= true;
+		prev_node->isNotNeeded		= true;
+		ptr->inSymbolTable			= true;
+		e->astPointer				= ptr;
+		cout << "I am here\n";
+	}
+	else{
+		binding* entry 		= new binding(identifier_name, Function, -1);
+		ptr->inSymbolTable	= true;
+		entry->astPointer	= ptr;
+		if(symbol_table-bp == sizeAssigned)
+			increaseStackSize();
+		*(symbol_table++) = *entry;
+		numEntries++;
+	}
+	enterScope();
+	bool hasSeenEllipsis = false;
+	if (parameters!=NULL){
+		parameters->bp = parameters->const_bp;
+		while(parameters->bp != parameters->children){
+			if(parameters->bp->symbol != ELLIPSISS){
+				NODE* declaration = parameters->bp; declaration->bp = declaration->const_bp;
+				declaration->bp++;
+				NODE* variable = declaration->bp++;
+				while(variable->symbol == POINTER) variable = variable->const_bp;
+				char* identifier_name 		= (char*)variable->value;
+				binding* en = new binding(identifier_name, Variable, -1);
+				en->astPointer				= parameters->bp;
+				en->astPointer->isNotNeeded = false;
+				if(symbol_table - bp == sizeAssigned)
+					increaseStackSize();
+				*(symbol_table++) = *en;
+				numEntries++;
+			}
+			else if(parameters->bp->symbol == ELLIPSISS){
+				hasSeenEllipsis = true;
+			}
+			parameters->bp++;
+		}
+	}
+	while(function_body->bp != function_body->children){
+		markDeadCode(function_body->bp++);
+	}
+	exitScope();
+	return;
+}
+
+
+void markDeclarations(NODE* ptr){
+	ptr->bp = ptr->const_bp;
+	NODE* markerNode;
+	NODE* declaration_specifier = ptr->bp++; declaration_specifier->bp = declaration_specifier->const_bp;
+	NODE* declaration_list 	= ptr->bp++; declaration_list->bp = declaration_list->const_bp;
+	int numDeclarations 	= declaration_list->children - declaration_list->bp;
+	SYMBOL_TYPE t			= Variable; 
+	while(declaration_list->bp != declaration_list->children){
+		bool isInitiazlized = false;
+		NODE* declarator = declaration_list->bp; declarator->bp = declarator->const_bp;
+		NODE* ident;
+		markerNode = (numDeclarations == 1)?(ptr):(declaration_list->bp);
+		if(declarator->symbol == INITIALIZE){ 			//check if the initializer part is correct or not, a = 10, 10 is correct or not
+			ident  = declarator->bp++;
+			while(ident->symbol == POINTER) ident = ident->bp;
+			NODE* initializer = declarator->bp++;
+			markDeadCode(initializer);
+		}
+		else if(declarator->symbol == FUNC_DECLARATOR){	//In the case of declaration of Function like "void printf();"
+			t 			= Function;
+			ident 		= declarator->bp++;
+			char* name	= (char*)ident->value;
+			int exists	= doesExist(name, Function);
+			if(exists == 0){
+				markerNode->inSymbolTable	= true;
+				markerNode->isNotNeeded		= true;
+				return;
+			}
+		}
+		else     													//In case when there is simple declaration like int b,v,d; No initializing and no function declaraions
+			ident = declarator;
+		while (ident->symbol == POINTER){
+			ident = ident->bp;			// To take care of pointers while declaraion
+//			t = Pointer_type;
+		}
+		if(ident->symbol == FUNC_DECLARATOR){
+			t = Function;
+			ident = ident->const_bp;
+			char* name	= (char*)ident->value;
+			int exists	= doesExist(name, Function);
+			if(exists == 0){
+				markerNode->inSymbolTable	= true;
+				markerNode->isNotNeeded		= true;
+				return;
+			}
+		}
+		char* identifier_name 		= (char*)ident->value;
+		binding* entry = new binding(identifier_name, t, 0);
+		entry->astPointer			= markerNode;
+		markerNode->inSymbolTable	= true;
+		entry->isValueAvailable 	= isInitiazlized;
+		if(symbol_table-bp == sizeAssigned)
+			increaseStackSize();
+		*(symbol_table++) = *entry;
+		numEntries++;
+		declaration_list->bp++;
+	}
+	return;
+}
+
 
 void startPropagation(NODE* ptr){
-	if(ptr == NULL || ptr->symbol == INTEGER||ptr->symbol == STRING || ptr->symbol == IDENT) return;
+	if(ptr == NULL || ptr->symbol == INTEGER||ptr->symbol == STRING || ptr->symbol == IDENT || ptr->symbol == ELLIPSISS) return;
 	if(ptr->symbol == ASSIGN){
 		ptr->bp 			= ptr->const_bp;
 		NODE* lval 			= ptr->bp++;
@@ -374,8 +569,6 @@ void propagateFunction(NODE* ptr){
 
 
 
-
-
 void propagateDeclarations(NODE* ptr){
 	ptr->bp = ptr->const_bp;
 	NODE* declaration_specifier = ptr->bp++; declaration_specifier->bp = declaration_specifier->const_bp;
@@ -402,8 +595,8 @@ void propagateDeclarations(NODE* ptr){
 		NODE* ident;
 		if(declarator->symbol == INITIALIZE){ 			//check if the initializer part is correct or not, a = 10, 10 is correct or not
 			ident  = declarator->bp++;
-			while(ident->symbol == POINTER) ident = ident->bp;
-			NODE* initializer = declarator->bp++;
+			while(ident->symbol == POINTER) ident = ident->const_bp;
+			NODE* initializer = declarator->bp++; initializer->bp = initializer->const_bp;
 			startPropagation(initializer);
 			int ans; bool ans1; char ans2;
 			if(initializer->symbol == INTEGER){
@@ -432,19 +625,19 @@ void propagateDeclarations(NODE* ptr){
 				replaceIdent(initializer);	
 			}
 		}
-		else if(declarator->symbol == FUNC_DECLARATOR){	//In the case of declaration of fucntion like "void printf();"
+		else if(declarator->symbol == FUNC_DECLARATOR){	//In the case of declaration of Function like "void printf();"
 			t = Function;
 			ident = declarator->bp++;
 		}
 		else     													//In case when there is simple declaration like int b,v,d; No initializing and no function declaraions
 			ident = declarator;
 		while (ident->symbol == POINTER){
-			ident = ident->bp;			// To take care of pointers while declaraion
-			t = Pointer_type;
+			ident = ident->const_bp;			// To take care of pointers while declaraion
+//			t = Pointer_type;
 		}
 		if(ident->symbol == FUNC_DECLARATOR){
 			t = Function;
-			ident = ident->bp;
+			ident = ident->const_bp;
 		}
 		char* identifier_name = (char*)ident->value;
 		binding* entry = new binding(identifier_name, t, variable_value);
@@ -470,7 +663,7 @@ void propagateDeclarations(NODE* ptr){
 
 
 void constantFolding(NODE* p){
-	if(p==NULL || p->symbol == INTEGER || p->symbol == STRING || p->symbol == IDENT || p->numChildren == 0) return;
+	if(p==NULL || p->symbol == INTEGER || p->symbol == STRING || p->symbol == IDENT || p->symbol == ELLIPSISS || p->numChildren == 0) return;
 	p->bp = p->const_bp;
 	if(p->symbol == PLUS || p->symbol == SUB || p->symbol == MULT || p->symbol == DIVIDE || p->symbol == REMAINDER || p->symbol == LEFT_SHIFT || p->symbol == RIGHT_SHIFT || p->symbol == EXCLUSIVE_OR || p->symbol == INCLUSIVE_OR || p->symbol == AND || p->symbol == LOGICAL_AND || p->symbol == LOGICAL_OR || p->symbol == LESS_THAN || p->symbol == GREATER_THAN || p->symbol == LESS_THAN_EQUAL_TO || p->symbol == GREATER_THAN_EQUAL_TO || p->symbol == EQUAL_TO || p->symbol == NOT_EQUAL_TO){
 		NODE* firstNumber	= p->bp++;
@@ -548,11 +741,9 @@ void constantFolding(NODE* p){
 					p->symbol = INTEGER;
 					break;
 			}
-			free(firstNumber->value); free(secondNumber->value);
 			p->numChildren = 0;
 			p->children = p->const_bp;
 			p->bp = p->const_bp;
-			free(p->bp);
 			p->value = (void*)val;
 		}
 		else if(firstNumber->symbol == INTEGER && *((int*)firstNumber->value)==0){	
@@ -564,11 +755,9 @@ void constantFolding(NODE* p){
 			else if(p->symbol == MULT || p->symbol == LEFT_SHIFT || p->symbol == RIGHT_SHIFT || p->symbol == REMAINDER || p->symbol == DIVIDE || p->symbol == AND || p->symbol == LOGICAL_AND){
 				isChanged 	= true;
 				*val = 0;
-				free(firstNumber->value); free(secondNumber->value);
 				p->numChildren = 0;
 				p->children = p->const_bp;
 				p->bp 		= p->const_bp;
-				free(p->bp);
 				p->symbol 	= INTEGER;
 				p->value 	= (void*)val;
 			}
@@ -582,11 +771,9 @@ void constantFolding(NODE* p){
 			else if(p->symbol == MULT || p->symbol == AND || p->symbol == LOGICAL_AND){
 				*val = 0;
 				isChanged 	= true;
-				free(firstNumber->value); free(secondNumber->value);
 				p->numChildren = 0;
 				p->children = p->const_bp;
 				p->bp 		= p->const_bp;
-				free(p->bp);
 				p->symbol 	= INTEGER;
 				p->value 	= (void*)val;
 			}
@@ -604,11 +791,9 @@ void constantFolding(NODE* p){
 			else if(p->symbol == LOGICAL_OR || p->symbol == INCLUSIVE_OR){
 				*val = 1;
 				isChanged 	= true;
-				free(firstNumber->value); free(secondNumber->value);
 				p->numChildren = 0;
 				p->children = p->const_bp;
 				p->bp 		= p->const_bp;
-				free(p->bp);
 				p->symbol 	= INTEGER;
 				p->value 	= (void*)val;
 			}
@@ -622,11 +807,9 @@ void constantFolding(NODE* p){
 			else if(p->symbol == LOGICAL_OR || p->symbol == INCLUSIVE_OR){
 				*val = 1;
 				isChanged 	= true;
-				free(firstNumber->value); free(secondNumber->value);
 				p->numChildren = 0;
 				p->children = p->const_bp;
 				p->bp 		= p->const_bp;
-				free(p->bp);
 				p->symbol 	= INTEGER;
 				p->value 	= (void*)val;
 			}
@@ -989,6 +1172,7 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 			cc << "\nfalse_case"<<branchAssigned<<":\n";
 			currBlock = "false_case" + to_string(branchAssigned);
 			cgen(p->bp++, global, ret_type, t, numPointer);
+			cc << "\tbr label %move_ahead"<<branchAssigned<<'\n';
 			cc << "\nmove_ahead"<<branchAssigned<<":\n";
 			currBlock = "move_ahead"+to_string(branchAssigned);
 			return t;
@@ -1042,7 +1226,7 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 		if(!hasEllipse){
 			if(p->bp == p->children){
 				if(reg->numPar > 0){
-					cout << "Fucntion "<<identifier<<" expects more arguments\n";
+					cout << "Function "<<identifier<<" expects more arguments\n";
 					exit(0);
 				}
 				param = "()\n";
@@ -1054,7 +1238,7 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 				int numPoint(0);
 				int totalArguments = args->children - args->bp;
 				if(totalArguments != reg->numPar){
-					cout << "Fucntion "<<identifier<<" expects different number of arguments\n";
+					cout << "Function "<<identifier<<" expects different number of arguments\n";
 					exit(0);
 				}
 				for(int i(0);i<totalArguments;i++){
@@ -1103,7 +1287,7 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 			string func_args = "";
 			if(p->bp == p->children){
 				if(reg->numPar > 1){		// Because 1 is for ellipsis
-					cout << "Fucntion "<<identifier<<" expects more arguments\n";
+					cout << "Function "<<identifier<<" expects more arguments\n";
 					exit(0);
 				}
 				param = "()\n"; func_args = "(...) ";
@@ -1240,7 +1424,10 @@ SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPo
 			return t;
 		}
 		p->bp = p->const_bp;
-		cgen(p->bp, false, ret_type, t ,numPointer);
+		if(t == Bool_type)
+			cgen(p->bp, false, "i8", t ,numPointer);
+		else
+			cgen(p->bp, false, ret_type, t ,numPointer);
 		if(t == Bool_type){
 			cc << "\t%"<<numRegister++<<" = trunc i8 %"<<(numRegister-2)<<" to i1\n";
 		}
@@ -1350,7 +1537,7 @@ void printDeclaration(NODE* p){
 				ident = ident->const_bp;
 			}
 			if(ident->symbol == FUNC_DECLARATOR){
-				cout << "Fucntion declared in a function\n";
+				cout << "Function declared in a function\n";
 				exit(0);
 			}
 			binding* entry = new binding((char*)ident->value, t, numRegister);
@@ -1402,7 +1589,7 @@ void printFuncDefinition(NODE* p){
 	NODE* ident = declarator->bp++; ident->bp = ident->const_bp;
 	char* identifier = (char*) ident->value;
 	if(doesExist(identifier,Function)==0){
-		cout << "Redaclaration of "<< identifier << endl;
+		cout << "Redeclaration of "<< identifier << endl;
 		exit(0);
 	}
 	binding* entry = new binding(identifier, Function, -1); // Value -1 means that the variable is global!
@@ -1467,7 +1654,7 @@ void printFuncDefinition(NODE* p){
 					}
 					*(pointer_par++) = num_pointer;
 					if(declarator->symbol == FUNC_DECLARATOR){
-						cout << "Fucntion declared with a function as one of its parameters\n";
+						cout << "Function declared with a function as one of its parameters\n";
 						exit(0);
 					}
 					if(t == Bool_type){
@@ -1601,7 +1788,7 @@ void printGlobalDeclaration(NODE* p, bool global){
 				bool hasSeenEllipsis = false;
 				while(par->bp != par->children){
 					if(hasSeenEllipsis){
-						cout << "Parameters given to a fucntion declaration after ellipsis\n";
+						cout << "Parameters given to a function declaration after ellipsis\n";
 						exit(0);
 					}
 					totalparameters++;
@@ -1633,7 +1820,7 @@ void printGlobalDeclaration(NODE* p, bool global){
 						}
 						*(pointer_par++) = i;
 						if(declarator->symbol == FUNC_DECLARATOR){
-							cout << "Fucntion declared with a function as one of its parameters\n";
+							cout << "Function declared with a function as one of its parameters\n";
 							exit(0);
 						}
 						parameters = parameters + par_type + par_pointer;
@@ -1680,7 +1867,7 @@ void printGlobalDeclaration(NODE* p, bool global){
 				bool hasSeenEllipsis = false;
 				while(par->bp != par->children){
 					if(hasSeenEllipsis){
-						cout << "Parameter given to a fucntion after ellipsis\n";
+						cout << "Parameter given to a function after ellipsis\n";
 						exit(0);
 					}
 					totalparameters++;
@@ -1712,7 +1899,7 @@ void printGlobalDeclaration(NODE* p, bool global){
 						}
 						*(pointer_par++) = i;
 						if(declarator->symbol == FUNC_DECLARATOR){
-							cout << "Fucntion declared with a function as one of its parameters\n";
+							cout << "Function declared with a function as one of its parameters\n";
 							exit(0);
 						}
 						parameters = parameters + par_type + par_pointer;
@@ -1732,7 +1919,7 @@ void printGlobalDeclaration(NODE* p, bool global){
 		if(global){
 			if(isFunc){
 				if(doesExist(identifier,Function)==0){
-					cout << "Redaclaration of "<< identifier << endl;
+					cout << "Redeclaration of "<< identifier << endl;
 					exit(0);
 				}
 				binding* entry = new binding(identifier, Function, -1); // Value -1 means that the variable is global!
@@ -1824,19 +2011,33 @@ int addFunction(NODE* ptr){
 	}
 	NODE* parameters		= (ident->bp == ident->children)?(NULL):(ident->bp++);	//NULL means no parameters
 	char* identifier_name 	= (char*)name->value;
-	binding* entry = new binding(identifier_name, Function, 0);
-	if(symbol_table-bp == sizeAssigned)
-		increaseStackSize();
-	*(symbol_table++) = *entry;
-	numEntries++;
-	
+	int existss = doesExist(identifier_name, Function);
+	if(existss == 0){
+		binding* e	= getVaribleInfo(identifier_name);
+		if(e->type != Function){
+			cout << identifier_name<<" was declared as a Variable\n";
+			return -1;
+		}
+		if(e->isValueAvailable == true){
+			cout << "Function "<<identifier_name<<" has already been defined\n";
+			return -1;
+		}
+	}
+	else{
+		binding* entry 			= new binding(identifier_name, Function, 0);
+		entry->isValueAvailable	= true;
+		if(symbol_table-bp == sizeAssigned)
+			increaseStackSize();
+		*(symbol_table++) = *entry;
+		numEntries++;
+	}
 	enterScope();
 //	if(parameters->symbol == PARAMETERS) cout << "PARAMETER
 	bool hasSeenEllipsis = false;
 	if (parameters!=NULL){
 		while(parameters->bp != parameters->children){
 			if(hasSeenEllipsis){
-				cout << "Parameter given to a fucntion definition after ellipsis\n";
+				cout << "Parameter given to a Function definition after ellipsis\n";
 				return -1;
 			}
 			if(parameters->bp->symbol != ELLIPSISS){
@@ -1845,7 +2046,7 @@ int addFunction(NODE* ptr){
 				NODE* variable = declaration->bp++;
 				while(variable->symbol == POINTER) variable = variable->bp;			//To take care of pointer
 				if(variable->symbol == FUNC_DECLARATOR){
-					cout << "Function given as an argument to a fucntion" << endl;
+					cout << "Function given as an argument to a Function" << endl;
 					return -1;
 				}
 				char* identifier_name = (char*)variable->value;
@@ -1887,7 +2088,7 @@ int addDeclaration(NODE* ptr){
 			}
 			if (check_semantics(initializer) == -1)	return -1;
 		}
-		else if((declaration_list.bp)->symbol == FUNC_DECLARATOR){	//In the case of declaration of fucntion like "void printf();"
+		else if((declaration_list.bp)->symbol == FUNC_DECLARATOR){	//In the case of declaration of Function like "void printf();"
 			t = Function;
 			NODE* k = declaration_list.bp;// k is the FUNC_DECLARATOR
 			ident = k->bp++;
@@ -1914,8 +2115,13 @@ int addDeclaration(NODE* ptr){
 			return -1;
 		}
 		if(t==Function){
-			int exists = doesExist(identifier_name, Function);
+			int exists 	= doesExist(identifier_name, Function);
 			if(exists == 0){
+				binding* e	= getVaribleInfo(identifier_name);
+				if(e->type != Function){
+					cout << identifier_name<<" was declared as a Variable\n";
+					return -1;
+				}
 				declaration_list.bp++; continue;
 			}
 		}
