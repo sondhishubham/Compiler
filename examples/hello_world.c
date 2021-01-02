@@ -16,6 +16,10 @@ int main(){
 	else{
 		m = m + 100;
 	}
-	printf("The answer is %d,\t%d,\t%d,\t%d\n", p,k,l,m);
+	char* kk = "The answer is nothing\n";
+	printf(kk);
 }
+
+
+int printf(char const *format, ...);
 

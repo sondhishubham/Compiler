@@ -84,13 +84,12 @@ void constantPropagation(NODE* p){
 
 void removeDeadCode(NODE*p){
 	initialize_stack();
-//	cout << "I am here\n";
 	markDeadCode(p);
 	remove(p);
 	markWholeDeclarations(p);
 	removeWholeDeclarations(p);
 	exitScope();
-	free(bp);
+//	free(bp);
 }
 
 int
@@ -111,13 +110,13 @@ main(int argc, char **argv)
   	initialize_stack();
    	int ans = check_semantics(abstract_syntax_tree);//Don't print tree before check_semantics!!!!
  	exitScope();
- 	free(bp);
+// 	free(bp);
  	if(ans != 0){
   		printf("retv = %d\n", ans);
   		exit(0);
 	}
-//	printTree(abstract_syntax_tree);
-//	cout << "\n\n";
+	printTree(abstract_syntax_tree);
+	cout << "\n\n";
 	isChanged = true;
 	while(isChanged){
 		isChanged = false;
@@ -125,8 +124,8 @@ main(int argc, char **argv)
 		constantPropagation(abstract_syntax_tree);
 		removeDeadCode(abstract_syntax_tree);
 	}
-//	printTree(abstract_syntax_tree);
-//	cout << "\n\n";
+	printTree(abstract_syntax_tree);
+	cout << "\n\n";
   	cc.open("cc.ll");
   	initialize_stack();
   	branchNum = 0; stringNum = 0; numWhitespace = 0;
@@ -139,8 +138,11 @@ main(int argc, char **argv)
 void markDeadCode(NODE* ptr){
 	if(ptr == NULL || ptr->symbol == INTEGER||ptr->symbol == STRING || ptr->symbol == ELLIPSISS)
 		return;
-	else if(ptr->symbol == DECLARATION)
+	else if(ptr->symbol == DECLARATION){
+	//		cout << "I am here\n";
 		markDeclarations(ptr);
+		return;
+		}
 	else if(ptr->symbol == FUNC_DEF){
 		ptr->bp 			= ptr->const_bp;
 		ptr->bp++;
@@ -154,9 +156,9 @@ void markDeadCode(NODE* ptr){
 			ptr->isNotNeeded = false;
 		}
 		markFunctions(ptr);
+		return;
 	}
 	else if(ptr->symbol == FUNC_CALL){
-//		printStack();
 		ptr->bp 		= ptr->const_bp;
 		NODE* ident 	= ptr->bp++;
 		binding* en		= getVaribleInfo((char*)ident->value);
@@ -170,6 +172,7 @@ void markDeadCode(NODE* ptr){
 		binding* en		= getVaribleInfo((char*)ptr->value);
 		NODE* p			= en->astPointer;
 		p->isNotNeeded	= false;
+		return;
 	}
 	else if(ptr->symbol == BLOCK){
 		if(ptr->numChildren == 0) return;
@@ -179,6 +182,7 @@ void markDeadCode(NODE* ptr){
 			markDeadCode(ptr->bp++);
 		}
 		exitScope();
+		return;
 	}
 	else{
 		if(ptr->numChildren > 0){
@@ -209,7 +213,6 @@ void markFunctions(NODE* ptr){
 		prev_node->isNotNeeded		= true;
 		ptr->inSymbolTable			= true;
 		e->astPointer				= ptr;
-		cout << "I am here\n";
 	}
 	else{
 		binding* entry 		= new binding(identifier_name, Function, -1);
@@ -267,7 +270,7 @@ void markDeclarations(NODE* ptr){
 		markerNode = (numDeclarations == 1)?(ptr):(declaration_list->bp);
 		if(declarator->symbol == INITIALIZE){ 			//check if the initializer part is correct or not, a = 10, 10 is correct or not
 			ident  = declarator->bp++;
-			while(ident->symbol == POINTER) ident = ident->bp;
+			while(ident->symbol == POINTER) ident = ident->const_bp;
 			NODE* initializer = declarator->bp++;
 			markDeadCode(initializer);
 		}
@@ -282,8 +285,10 @@ void markDeclarations(NODE* ptr){
 				return;
 			}
 		}
-		else     													//In case when there is simple declaration like int b,v,d; No initializing and no function declaraions
+		else{     													//In case when there is simple declaration like int b,v,d; No initializing and no function declaraions
 			ident = declarator;
+//			cout << "I am here\n";
+		}
 		while (ident->symbol == POINTER){
 			ident = ident->bp;			// To take care of pointers while declaraion
 //			t = Pointer_type;
@@ -300,6 +305,7 @@ void markDeclarations(NODE* ptr){
 			}
 		}
 		char* identifier_name 		= (char*)ident->value;
+//		cout << identifier_name << endl;
 		binding* entry = new binding(identifier_name, t, 0);
 		entry->astPointer			= markerNode;
 		markerNode->inSymbolTable	= true;
@@ -2261,7 +2267,7 @@ void printStack(){
 }
 
 void printEntry(binding b){
-
+//cout << "I am here\n";
 switch(b.type){
 	case Integer_type:
 		cout << "[Integer("<<b.identifier<<")|" << "Register("<<b.scope_size <<")]";
