@@ -47,7 +47,6 @@ void markDeadCode(NODE* ptr){
 	if(ptr == NULL || ptr->symbol == INTEGER||ptr->symbol == STRING || ptr->symbol == ELLIPSISS)
 		return;
 	else if(ptr->symbol == DECLARATION){
-	//		cout << "I am here\n";
 		markDeclarations(ptr);
 		return;
 		}
@@ -120,7 +119,7 @@ void markFunctions(NODE* ptr){
 		prev_node->inSymbolTable	= true;
 		prev_node->isNotNeeded		= true;
 		ptr->inSymbolTable			= true;
-		e->astPointer				= ptr;
+//		e->astPointer				= ptr;
 	}
 	else{
 		binding* entry 		= new binding(identifier_name, Function, -1);
@@ -160,6 +159,16 @@ void markFunctions(NODE* ptr){
 		markDeadCode(function_body->bp++);
 	}
 	exitScope();
+	if(existss == 0){
+		binding* e					= getVaribleInfo(identifier_name);
+		NODE* prev_node				= e->astPointer;
+		*prev_node					= *ptr;
+		ptr->inSymbolTable			= true;
+		ptr->isNotNeeded			= true;
+		prev_node->inSymbolTable	= true;
+		prev_node->isNotNeeded		= false;
+		e->astPointer				= ptr;
+	}
 	return;
 }
 
