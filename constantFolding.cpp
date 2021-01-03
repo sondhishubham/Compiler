@@ -182,14 +182,6 @@ void constantFolding(NODE* p){
 		return;
 	}
 	if(p->symbol == WHILEE){
-		NODE* cond = p->bp++;
-		NODE* loop = p->bp++;
-		constantFolding(cond);
-		constantFolding(loop);
-		if(cond->symbol == INTEGER && *((int*)cond->value) == 0){
-			isChanged = true;
-			*p = *(new NODE(BLOCK, NULL, 0));
-		}
 		return;
 	}
 	while(p->bp != p->children){

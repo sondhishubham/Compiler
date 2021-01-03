@@ -24,11 +24,14 @@ extern binding* getVaribleInfo(char*);
 extern NODE* createUnaryNode(SYMBOL, NODE*);
 extern NODE* createBinaryNode(SYMBOL, NODE*, NODE*);
 
+bool isloop;
+
 void startCopyPropagation(NODE*);
 void propagateCopyDeclarations(NODE*);
 void propagateCopyFunction(NODE*);
 void makeUnavailable(char*);
 void copyPropagation(NODE* p){
+	isloop = false;
 	initialize_stack();
 	startCopyPropagation(p);
 	exitScope();
@@ -38,6 +41,31 @@ void copyPropagation(NODE* p){
 void startCopyPropagation(NODE* ptr){
 //	printTree(ptr); cout << "\n\n";
 	if(ptr == NULL || ptr->symbol == INTEGER||ptr->symbol == STRING || ptr->symbol == ELLIPSISS) return;
+	if(isloop){
+		if(ptr->symbol == RETURNN) return;
+		if(ptr->symbol == IDENT){
+			binding* info			= getVaribleInfo((char*)ptr->value);
+			makeUnavailable((char*)ptr->value);
+			info->isValueAvailable	= false;
+			return;
+		}
+		else if(ptr->symbol == BLOCK){
+			enterScope();
+			ptr->bp = ptr->const_bp;
+			while(ptr->bp != ptr->children){
+				startCopyPropagation(ptr->bp++);
+			}
+			exitScope();
+			return;
+		}
+		else{
+			ptr->bp = ptr->const_bp;
+			while(ptr->bp != ptr->children){
+				startCopyPropagation(ptr->bp++);
+			}
+			return;
+		}
+	}
 	if(ptr->symbol == IDENT){
 		ptr->bp 			= ptr->const_bp;
 		char* variableName 	= (char*)ptr->value;
@@ -57,6 +85,7 @@ void startCopyPropagation(NODE* ptr){
 		NODE* lval 				= ptr->bp++;
 		char* lvariableName 	= (char*)lval->value;
 		NODE* rval 				= ptr->bp++;
+		makeUnavailable(lvariableName);
 		startCopyPropagation(rval);
 		if(rval->symbol == IDENT){
 			char* rvariableName	= (char*)rval->value;
@@ -68,8 +97,11 @@ void startCopyPropagation(NODE* ptr){
 			binding* linfo	 		= getVaribleInfo(lvariableName);
 			linfo->isValueAvailable	= true;
 			linfo->copyIndent		= rinfo;
-			makeUnavailable(lvariableName);
 			return;
+		}
+		else{
+			binding* linfo 			= getVaribleInfo(lvariableName);
+			linfo->isValueAvailable	= false;
 		}
 		return;
 	}
@@ -97,6 +129,14 @@ void startCopyPropagation(NODE* ptr){
 	else if(ptr->symbol == FUNC_DEF){
 		ptr->bp = ptr->const_bp;
 		propagateCopyFunction(ptr);
+		return;
+	}
+	else if(ptr->symbol == WHILEE){
+		ptr->bp 	= ptr->const_bp;
+		isloop 		= true;
+		startCopyPropagation(ptr->bp++);
+		startCopyPropagation(ptr->bp++);
+		isloop		= false;
 		return;
 	}
 	else if(ptr->symbol == BLOCK){

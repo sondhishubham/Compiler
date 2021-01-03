@@ -97,8 +97,8 @@ main(int argc, char **argv)
 	while(isChanged){
 		isChanged = false;
 		constantFolding(abstract_syntax_tree);
-		constantPropagation(abstract_syntax_tree);
 		copyPropagation(abstract_syntax_tree);
+		constantPropagation(abstract_syntax_tree);
 		removeDeadCode(abstract_syntax_tree);
 	}
 	printTree(abstract_syntax_tree);

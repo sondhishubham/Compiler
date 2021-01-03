@@ -23,6 +23,8 @@ extern NODE* createUnaryNode(SYMBOL, NODE*);
 extern NODE* createBinaryNode(SYMBOL, NODE*, NODE*);
 
 
+bool isLoop;
+
 void startPropagation(NODE*);
 void propagateDeclarations(NODE*);
 void propagateFunction(NODE*);
@@ -30,6 +32,7 @@ void replaceIdent(NODE*);
 
 
 void constantPropagation(NODE* p){
+	isLoop = false;
 	initialize_stack();
 	startPropagation(p);
 	exitScope();
@@ -37,7 +40,32 @@ void constantPropagation(NODE* p){
 
 
 void startPropagation(NODE* ptr){
-	if(ptr == NULL || ptr->symbol == INTEGER||ptr->symbol == STRING || ptr->symbol == IDENT || ptr->symbol == ELLIPSISS) return;
+	if(ptr == NULL || ptr->symbol == INTEGER||ptr->symbol == STRING || ptr->symbol == ELLIPSISS) return;
+	if(isLoop){
+		if(ptr->symbol == RETURNN) return;
+		if(ptr->symbol == IDENT){
+			binding* info			= getVaribleInfo((char*)ptr->value);
+			info->isValueAvailable	= false;
+			return;
+		}
+		else if(ptr->symbol == BLOCK){
+			enterScope();
+			ptr->bp = ptr->const_bp;
+			while(ptr->bp != ptr->children){
+				startPropagation(ptr->bp++);
+			}
+			exitScope();
+			return;
+		}
+		else{
+			ptr->bp = ptr->const_bp;
+			while(ptr->bp != ptr->children){
+				startPropagation(ptr->bp++);
+			}
+			return;
+		}
+	}
+	if(ptr->symbol == IDENT) return;
 	if(ptr->symbol == ASSIGN){
 		ptr->bp 			= ptr->const_bp;
 		NODE* lval 			= ptr->bp++;
@@ -169,12 +197,22 @@ void startPropagation(NODE* ptr){
 		if(returnVal->symbol == IDENT) replaceIdent(returnVal);
 		return;
 	}
-	else if(ptr->symbol == IFTHEN || ptr->symbol == WHILEE){
+	else if(ptr->symbol == IFTHEN){
 		ptr->bp 	= ptr->const_bp;
 		NODE* cond 	= ptr->const_bp; 
 		while(ptr->bp != ptr->children) startPropagation(ptr->bp++);
 		if(cond->symbol == IDENT)
 			replaceIdent(cond);
+		return;
+	}
+	else if(ptr->symbol == WHILEE){
+		ptr->bp 	= ptr->const_bp;
+		isLoop 		= true;
+		NODE* cond	= ptr->bp++;
+		NODE* loop	= ptr->bp++;
+		startPropagation(cond);
+		startPropagation(loop);
+		isLoop 		= false;
 		return;
 	}
 	else if(ptr->symbol == DECLARATION){
