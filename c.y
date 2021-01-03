@@ -598,7 +598,6 @@ void addChild(NODE* parent, NODE* child){
 		while(itr!=parent->children){
 			*(new_arr++) = *(itr++);
 		}
-		free(parent->bp);
 		parent->children = new_arr;
 		parent->bp = new_bp;
 		parent->const_bp = new_bp;

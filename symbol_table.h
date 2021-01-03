@@ -21,14 +21,15 @@ class binding{
 	public:
 		NODE* astPointer;
 		bool isValueAvailable;	//Also true if the function is defined, otherwise false
-		int numPointer;		// Added to take care of the number of pointers in a variable. eg. int*** l, numPointer = 3
+		int numPointer;			// Added to take care of the number of pointers in a variable. eg. int*** l, numPointer = 3
 		char* identifier;
 		SYMBOL_TYPE type;
 		SYMBOL_TYPE ret_type;	//The return type of functions;
 		SYMBOL_TYPE* par_types;	//The type of parameters
 		int* par_pointers;		//The number of pointers in parameters;
 		int numPar;				//Number of parameters in a function;
-		int scope_size;		//Also the register assigned to a variable;
+		int scope_size;			//Also the register assigned to a variable;
+		binding* copyIndent;	//The identifier which was assigned to current identifier.
 		binding(char* id, SYMBOL_TYPE t, int size){
 			numPointer  		= 0;
 			identifier  		= id;
@@ -39,5 +40,6 @@ class binding{
 			numPar				= 0;
 			isValueAvailable 	= false;
 			astPointer			= NULL;
+			copyIndent			= NULL;
 		}
 };
