@@ -86,7 +86,6 @@ main(int argc, char **argv)
   	initialize_stack();
    	int ans = check_semantics(abstract_syntax_tree);//Don't print tree before check_semantics!!!!
  	exitScope();
-// 	free(bp);
  	if(ans != 0){
   		printf("retv = %d\n", ans);
   		exit(0);
@@ -115,6 +114,7 @@ main(int argc, char **argv)
 
 
 SYMBOL_TYPE cgen(NODE* p, bool global, string ret_type, SYMBOL_TYPE t, int numPointer){	// If global = 1, it is an external declaration.
+//	printTree(p); cout << "\n\n";
 	if(p == NULL) return t;
 	if(p->symbol == STRING){
 		string numAssigned = to_string(stringNum++);
@@ -904,7 +904,7 @@ void printFuncDefinition(NODE* p){
 					*(par_list++) = t;
 					specific_t = t;
 					while(declarator->symbol == POINTER){
-						declarator = declarator->bp;
+						declarator = declarator->const_bp;
 						par_pointer = par_pointer + "*";
 						specific_t = Pointer_type;
 						num_pointer++;
@@ -1072,7 +1072,7 @@ void printGlobalDeclaration(NODE* p, bool global){
 						}
 						int i(0);
 						while(declarator->symbol == POINTER){
-							declarator = declarator->bp;
+							declarator = declarator->const_bp;
 							par_pointer = par_pointer + "*";
 							i++;
 						}
@@ -1151,7 +1151,7 @@ void printGlobalDeclaration(NODE* p, bool global){
 						}
 						int i(0);
 						while(declarator->symbol == POINTER){
-							declarator = declarator->bp;
+							declarator = declarator->const_bp;
 							par_pointer = par_pointer + "*";
 							i++;
 						}

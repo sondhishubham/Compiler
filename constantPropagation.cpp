@@ -57,6 +57,11 @@ void startPropagation(NODE* ptr){
 			exitScope();
 			return;
 		}
+		else if(ptr->symbol == DECLARATION){
+			ptr->bp = ptr->const_bp;
+			propagateDeclarations(ptr);
+			return;
+		}
 		else{
 			ptr->bp = ptr->const_bp;
 			while(ptr->bp != ptr->children){

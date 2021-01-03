@@ -49,6 +49,11 @@ void startCopyPropagation(NODE* ptr){
 			info->isValueAvailable	= false;
 			return;
 		}
+		else if(ptr->symbol == DECLARATION){
+			ptr->bp = ptr->const_bp;
+			propagateCopyDeclarations(ptr);
+			return;
+		}
 		else if(ptr->symbol == BLOCK){
 			enterScope();
 			ptr->bp = ptr->const_bp;

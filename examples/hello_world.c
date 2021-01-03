@@ -7,18 +7,23 @@ int sum(int a, int b){
 	return a+b;
 }
 
-int main(){
+int main(int argc, char **argv){
 	int p = 10, k, l , m;
-	l = 1000;
-	int mm = 3-10;
-	k = p;
-	while(p > 0){
-		k = k + mm;
-		p -= 1;
+	k = p + 3;
+	if(p > 11){
+		while(p > 0){
+			k += k;
+			p -= 1;
+		}
 	}
-	
+	else{
+		while(p > 0){
+			k+= p;
+			p-=1;
+		}
+	}
 	char* ll = "The answer is %d\n";
-	printf(ll, k);
+	printf(ll, p);
 }
 
 
